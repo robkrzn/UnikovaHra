@@ -13,7 +13,7 @@ const int TlacidloCervene = 19;//pintlacidla
 
 //globalne pomocne premenne
 int i=1,y=0,x=1;      //pomocne premenne
-int StavModrehoTlacidla;  
+int StavModrehoTlacidla;  //nove pomocne tlacidlo
 bool zmenaModrehoTlacidla;
 int StavCervenehoTlacidla;
 bool zmenaCervenehoTlacidla;
