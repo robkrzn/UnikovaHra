@@ -35,6 +35,7 @@ void loop() {
     zmenaModrehoTlacidla=false;
   }else if(StavModrehoTlacidla==LOW){
     zmenaModrehoTlacidla=true;
+    delay(50);    //kratky delay kvoli problemom s tlacidlom a doslo len k jednemu stlaceniu
   }
 
   if(StavCervenehoTlacidla==HIGH  &&  zmenaCervenehoTlacidla){
@@ -43,6 +44,7 @@ void loop() {
     zmenaCervenehoTlacidla=false;
   }else if(StavCervenehoTlacidla==LOW){
     zmenaCervenehoTlacidla=true;
+    delay(50);    //kratky delay kvoli problemom s tlacidlom a doslo len k jednemu stlaceniu
   }
   if(x!=y){
     x=y;
