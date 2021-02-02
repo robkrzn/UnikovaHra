@@ -1,7 +1,9 @@
 #include <Arduino.h>
 #include <U8x8lib.h>
 
-#define MAXMOZNOSTI 5                                                                                             //max moznosti hier ktoru su k dispozicii
+#include "morseovka.h"
+
+#define MAXMOZNOSTI 5                                                                                            //max moznosti hier ktoru su k dispozicii
 const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "TEST HRY 3", "TEST HRY 4", "TEST HRY 5"}; //nazvy hier z menu
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
@@ -23,6 +25,8 @@ bool zmenaCervenehoTlacidla;
 void setup()
 {
   u8x8.begin();
+  Serial.begin(115200);
+
   pinMode(TlacidloModre, INPUT);
   pinMode(TlacidloCervene, INPUT);
 }
@@ -35,43 +39,59 @@ void svetelnaBrana()
   u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4));
 }
 
-void morseovka(){
-  int pocitadloZnaku=0;
-  int poccitadloMedzery=0;
-  char znak[5]={0};
-  while(true){
-  hodnotaPhotorezistora = analogRead(PhotoresistorPin);
+void morseovka()
+{
+  bool pismenoHotovo = false;
+  int dlzkaPismena = 0;
+  char znak[5] = {2,2,2,2,2};
+  while (pismenoHotovo == false)
+  {
+    int pocitadloZnaku = 0;
+    int pocitadloMedzery = 0;
 
-    while(hodnotaPhotorezistora<600 && pocitadloZnaku <10000){
-      pocitadloZnaku++;
-      hodnotaPhotorezistora = analogRead(PhotoresistorPin);
-      //poccitadloMedzery=0;
+    if (analogRead(PhotoresistorPin) < 300)
+    {
+      while ((analogRead(PhotoresistorPin) < 300) && pocitadloZnaku < 60000)
+      {
+        pocitadloZnaku++;
+      }
+      delay(10);
+      while ((analogRead(PhotoresistorPin) >= 300) && pocitadloMedzery < 200000)
+      {
+        pocitadloMedzery++;
+      }
+      //u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+      //u8x8.drawString(0, 2, u8x8_u16toa(pocitadloZnaku, 5));
+      //u8x8.drawString(0, 3, u8x8_u16toa(pocitadloMedzery, 5));
+      
+      //u8x8.drawString(0, 4, u8x8_u16toa(analogRead(PhotoresistorPin), 5));
+
+      if ((pocitadloZnaku < 15000) && (pocitadloZnaku >= 1))
+      {
+        Serial.printf(".");
+        znak[dlzkaPismena] = 0;
+        dlzkaPismena++;
+      }
+      else if ((pocitadloZnaku < 40000) && (pocitadloZnaku >= 15000))
+      {
+        Serial.printf("-");
+        znak[dlzkaPismena] = 1;
+        dlzkaPismena++;
+      }
+      else
+      {
+        Serial.printf("\nnepoznam znak %d %d",pocitadloZnaku,pocitadloMedzery);
+        pismenoHotovo = true;
+      }
+      //Serial.printf("\nMedzera:%d",pocitadloMedzery);
     }
-    /*
-    while(hodnotaPhotorezistora>=600 && poccitadloMedzery <20000){
-      poccitadloMedzery++;
-      hodnotaPhotorezistora = analogRead(PhotoresistorPin);
+    if((pocitadloMedzery < 15000) && (pocitadloMedzery > 5000)){
+        //Serial.printf(" ")
+    }else if((pocitadloMedzery < 60000) && (pocitadloMedzery > 20000)){
+      pismenoHotovo=1;
+      Serial.printf("\n");
     }
-    */
-    if(digitalRead(TlacidloCervene)==true){
-      pocitadloZnaku=0;
-      u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
-      u8x8.drawString(0, 2, u8x8_u16toa(pocitadloZnaku, 4));
-      u8x8.setCursor(5, 2);
-      u8x8.print("null");
-    }
-    if(pocitadloZnaku>0){
-    u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
-    u8x8.drawString(0, 2, u8x8_u16toa(pocitadloZnaku, 4));
-    }
-    /*
-    if(poccitadloMedzery>0){
-      u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
-      u8x8.drawString(0, 3, u8x8_u16toa(poccitadloMedzery, 4));
-    }
-    */
   }
-
 }
 
 void loop()
@@ -106,6 +126,6 @@ void loop()
   //MENU
   if (zapnutaHra == true && y == 0)
     svetelnaBrana();
-  if(zapnutaHra == true && y == 1)
+  if (zapnutaHra == true && y == 1)
     morseovka();
 }
