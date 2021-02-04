@@ -4,7 +4,7 @@
 
 #include "morseovka.h"
 
-#define MAXMOZNOSTI 5                                                                                         //max moznosti hier ktoru su k dispozicii
+#define MAXMOZNOSTI 5                                                                                           //max moznosti hier ktoru su k dispozicii
 const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "TEST HRY 5"}; //nazvy hier z menu
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
@@ -29,7 +29,9 @@ int hodnotaPhotorezistora;
 bool zmenaModrehoTlacidla;
 int StavCervenehoTlacidla;
 bool zmenaCervenehoTlacidla;
+
 bool LEDHraKoniec = false;
+bool MiesanieFariebKoniec = false;
 
 void setup()
 {
@@ -103,18 +105,7 @@ void morseovka()
 
 void LEDHra()
 {
-  /*
-  if(digitalRead(TlacidloZelene)==true)digitalWrite(greenDioda,HIGH);
-  else digitalWrite(greenDioda,LOW);
-
-  if(digitalRead(TlacidloCervene)==true)digitalWrite(redDioda,HIGH);
-  else digitalWrite(redDioda,LOW);
-
-  if(digitalRead(TlacidloModre)==true)digitalWrite(blueDioda,HIGH);
-  else digitalWrite(blueDioda,LOW);
-  */
-  
-  int pocitadloKol=0;
+  int pocitadloKol = 0;
   int maxKol = 5;
   while (LEDHraKoniec == false)
   {
@@ -132,7 +123,7 @@ void LEDHra()
           digitalWrite(redDioda, LOW);
           pocitadloKol++;
           koloUkoncene = true;
-          Serial.printf("\nCervena  dobre %d",pocitadloKol);
+          Serial.printf("\nCervena  dobre %d", pocitadloKol);
         }
         else if (digitalRead(TlacidloModre) || digitalRead(TlacidloZelene))
         {
@@ -140,7 +131,7 @@ void LEDHra()
           prehra = true;
           koloUkoncene = true;
           pocitadloKol = 0;
-          Serial.printf("\nCervena  zle %d",pocitadloKol);
+          Serial.printf("\nCervena  zle %d", pocitadloKol);
         }
       }
     }
@@ -154,7 +145,7 @@ void LEDHra()
           digitalWrite(greenDioda, LOW);
           pocitadloKol++;
           koloUkoncene = true;
-          Serial.printf("\nZelena  dobre %d",pocitadloKol);
+          Serial.printf("\nZelena  dobre %d", pocitadloKol);
         }
         else if (digitalRead(TlacidloModre) || digitalRead(TlacidloCervene))
         {
@@ -162,7 +153,7 @@ void LEDHra()
           prehra = true;
           koloUkoncene = true;
           pocitadloKol = 0;
-          Serial.printf("\nZelena  zle %d",pocitadloKol);
+          Serial.printf("\nZelena  zle %d", pocitadloKol);
         }
       }
     }
@@ -176,7 +167,7 @@ void LEDHra()
           digitalWrite(blueDioda, LOW);
           pocitadloKol++;
           koloUkoncene = true;
-          Serial.printf("\nModra  dobre %d",pocitadloKol);
+          Serial.printf("\nModra  dobre %d", pocitadloKol);
         }
         else if (digitalRead(TlacidloCervene) || digitalRead(TlacidloZelene))
         {
@@ -184,7 +175,7 @@ void LEDHra()
           prehra = true;
           koloUkoncene = true;
           pocitadloKol = 0;
-          Serial.printf("\nModra  zle %d",pocitadloKol);
+          Serial.printf("\nModra  zle %d", pocitadloKol);
         }
       }
     }
@@ -201,9 +192,10 @@ void LEDHra()
       u8x8.setCursor(0, 4);
       u8x8.print("Zle, znova");
     }
-    if(pocitadloKol==maxKol){
-      LEDHraKoniec=true;
-      Serial.printf("\nVyhra  dobre %d",pocitadloKol);
+    if (pocitadloKol == maxKol)
+    {
+      LEDHraKoniec = true;
+      Serial.printf("\nVyhra  dobre %d", pocitadloKol);
       u8x8.setCursor(0, 4);
       u8x8.print("                ");
       u8x8.setCursor(0, 4);
@@ -212,14 +204,146 @@ void LEDHra()
     u8x8.setCursor(0, 3);
     u8x8.print("                ");
     u8x8.setCursor(0, 3);
-    u8x8.printf("%d/%d",pocitadloKol,maxKol);
+    u8x8.printf("%d/%d", pocitadloKol, maxKol);
   }
 }
 
-void MiesanieFarieb(){
-
-
+void MiesanieFarieb()
+{
+  int pocitadloKol = 0;
+  int maxKol = 5;
+  while (MiesanieFariebKoniec == false)
+  {
+    delay(1000);
+    digitalWrite(greenDioda, LOW);
+    digitalWrite(redDioda, LOW);
+    digitalWrite(blueDioda, LOW);
+    bool prehra = false;
+    int nahodneCislo = random(1, 5);
+    bool koloUkoncene = false;
+    if (nahodneCislo == 1)
+    {
+      u8x8.setCursor(0, 4);
+      u8x8.print("                ");
+      u8x8.setCursor(0, 4);
+      u8x8.print("Fialova");
+      while (koloUkoncene == false)
+      {
+        if (digitalRead(TlacidloCervene) && digitalRead(TlacidloModre))
+        {
+          digitalWrite(redDioda, HIGH);
+          digitalWrite(blueDioda, HIGH);
+          pocitadloKol++;
+          koloUkoncene = true;
+          Serial.printf("\nFiaolova  dobre %d", pocitadloKol);
+        }
+        else if (digitalRead(TlacidloZelene))
+        {
+          prehra = true;
+          koloUkoncene = true;
+          pocitadloKol = 0;
+          Serial.printf("\nFiaolova  zle %d", pocitadloKol);
+        }
+      }
+    }
+    if (nahodneCislo == 2)
+    {
+      u8x8.setCursor(0, 4);
+      u8x8.print("                ");
+      u8x8.setCursor(0, 4);
+      u8x8.print("Tyrkysova");
+      while (koloUkoncene == false)
+      {
+        if (digitalRead(TlacidloZelene) && digitalRead(TlacidloModre))
+        {
+          digitalWrite(greenDioda, HIGH);
+          digitalWrite(blueDioda, HIGH);
+          pocitadloKol++;
+          koloUkoncene = true;
+          Serial.printf("\nTyrkysova  dobre %d", pocitadloKol);
+        }
+        else if (digitalRead(TlacidloCervene))
+        {
+          prehra = true;
+          koloUkoncene = true;
+          pocitadloKol = 0;
+          Serial.printf("\nTyrkysova  zle %d", pocitadloKol);
+        }
+      }
+    }
+    if (nahodneCislo == 3)
+    {
+      u8x8.setCursor(0, 4);
+      u8x8.print("                ");
+      u8x8.setCursor(0, 4);
+      u8x8.print("Zlta");
+      while (koloUkoncene == false)
+      {
+        if (digitalRead(TlacidloZelene) && digitalRead(TlacidloCervene))
+        {
+          digitalWrite(greenDioda, HIGH);
+          digitalWrite(redDioda, HIGH);
+          pocitadloKol++;
+          koloUkoncene = true;
+          Serial.printf("\nZlta  dobre %d", pocitadloKol);
+        }
+        else if (digitalRead(TlacidloModre))
+        {
+          prehra = true;
+          koloUkoncene = true;
+          pocitadloKol = 0;
+          Serial.printf("\nZlta  zle %d", pocitadloKol);
+        }
+      }
+    }
+    if (nahodneCislo == 4)
+    {
+      u8x8.setCursor(0, 4);
+      u8x8.print("                ");
+      u8x8.setCursor(0, 4);
+      u8x8.print("Biela");
+      while (koloUkoncene == false)
+      {
+        if (digitalRead(TlacidloZelene) && digitalRead(TlacidloCervene) && digitalRead(TlacidloModre))
+        {
+          digitalWrite(greenDioda, HIGH);
+          digitalWrite(redDioda, HIGH);
+          digitalWrite(blueDioda, HIGH);
+          pocitadloKol++;
+          koloUkoncene = true;
+          Serial.printf("\nBiela  dobre %d", pocitadloKol);
+        }
+      }
+    }
+    if (prehra == true)
+    {
+      digitalWrite(redDioda, HIGH);
+      delay(500);
+      digitalWrite(redDioda, LOW);
+      delay(500);
+      digitalWrite(redDioda, HIGH);
+      delay(500);
+      digitalWrite(redDioda, LOW);
+      delay(500);
+      u8x8.setCursor(0, 4);
+      u8x8.print("Zle, znova");
+    }
+    if (pocitadloKol == maxKol)
+    {
+      MiesanieFariebKoniec = true;
+      Serial.printf("\nVyhra  dobre %d", pocitadloKol);
+      u8x8.setCursor(0, 4);
+      u8x8.print("                ");
+      u8x8.setCursor(0, 4);
+      u8x8.print("Vyhral si");
+    }
+    u8x8.setCursor(0, 3);
+    u8x8.print("                ");
+    u8x8.setCursor(0, 3);
+    u8x8.printf("%d/%d", pocitadloKol, maxKol);
+  }
 }
+
 void loop()
 {
   StavModrehoTlacidla = digitalRead(TlacidloModre);
