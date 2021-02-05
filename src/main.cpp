@@ -4,8 +4,8 @@
 
 #include "morseovka.h"
 
-#define MAXMOZNOSTI 5                                                                                           //max moznosti hier ktoru su k dispozicii
-const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "TEST HRY 5"}; //nazvy hier z menu
+#define MAXMOZNOSTI 5                                                                                         //max moznosti hier ktoru su k dispozicii
+const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj"}; //nazvy hier z menu
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
 
@@ -15,6 +15,7 @@ const int TlacidloModre = 18;   //pintlacidla
 const int TlacidloCervene = 19; //pintlacidla
 const int TlacidloZelene = 5;   //pintlacidla
 const int PhotoresistorPin = 2; //pin footorezistora
+const int ZvukPin = 15;
 
 //RGB MODUL
 const int redDioda = 32;
@@ -45,6 +46,8 @@ void setup()
   pinMode(redDioda, OUTPUT); //RGB dioda
   pinMode(greenDioda, OUTPUT);
   pinMode(blueDioda, OUTPUT);
+
+  pinMode(ZvukPin, INPUT);
 
   priemerMerani.begin(); //klzavy priemer
 }
@@ -344,6 +347,66 @@ void MiesanieFarieb()
   }
 }
 
+void Tlieskanie()
+{
+  bool zap = false;
+  int casovac = 0;
+  int pocetTlesknuty = 0;
+  while (true)
+  {
+    int hodnota = digitalRead(ZvukPin);
+
+    if (hodnota == 1)
+    {
+      pocetTlesknuty++;
+      digitalWrite(greenDioda, true);
+      delay(100);
+      digitalWrite(greenDioda, false);
+
+      u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+      u8x8.setCursor(0, 3);
+      u8x8.printf("%d", pocetTlesknuty);
+    }
+    if (pocetTlesknuty == 3)
+    {
+      pocetTlesknuty = 0;
+      casovac = 0;
+      zap = !zap;
+      if (zap)
+      {
+        digitalWrite(redDioda, true);
+        u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
+        u8x8.drawString(0, 4, "ZAP");
+      }
+      else
+      {
+        digitalWrite(redDioda, false);
+        u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
+        u8x8.drawString(0, 4, "VYP");
+      }
+      delay(100);
+    }
+    if (pocetTlesknuty > 0)
+    {
+      casovac++;
+    }
+    if (casovac > 2000)
+    {
+      pocetTlesknuty = 0;
+      u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+      u8x8.setCursor(0, 3);
+      u8x8.printf("%d", pocetTlesknuty);
+      casovac = 0;
+      digitalWrite(blueDioda, true);
+      u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
+      u8x8.drawString(0, 4, "NULL");
+      delay(100);
+      digitalWrite(blueDioda, false);
+      u8x8.drawString(0, 4, "    ");
+    }
+    delay(1);
+  }
+}
 void loop()
 {
   StavModrehoTlacidla = digitalRead(TlacidloModre);
@@ -382,4 +445,6 @@ void loop()
     LEDHra();
   if (zapnutaHra == true && y == 3)
     MiesanieFarieb();
+  if (zapnutaHra == true && y == 4)
+    Tlieskanie();
 }
