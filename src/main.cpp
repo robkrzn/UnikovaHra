@@ -407,6 +407,7 @@ void Tlieskanie()
     delay(1);
   }
 }
+
 void loop()
 {
   StavModrehoTlacidla = digitalRead(TlacidloModre);
