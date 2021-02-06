@@ -4,18 +4,26 @@
 
 #include "morseovka.h"
 
-#define MAXMOZNOSTI 5                                                                                         //max moznosti hier ktoru su k dispozicii
-const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj"}; //nazvy hier z menu
+#define MAXMOZNOSTI 6                                                                                         //max moznosti hier ktoru su k dispozicii
+const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj", "Dotyk"}; //nazvy hier z menu
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
 
-movingAvg priemerMerani(20);
+movingAvg priemerMerani(20);  //klzavy priemer pre meranie morseovky
+
+#define MERANIADOTYKUPREPRIEMER 5
+movingAvg dotykMeranie1(MERANIADOTYKUPREPRIEMER);  //klzavy priemer pre meranie dotyku
+movingAvg dotykMeranie2(MERANIADOTYKUPREPRIEMER);  ////klzavy priemer pre meranie dotyku
 //definicie pinov
 const int TlacidloModre = 18;   //pintlacidla
 const int TlacidloCervene = 19; //pintlacidla
 const int TlacidloZelene = 5;   //pintlacidla
 const int PhotoresistorPin = 2; //pin footorezistora
 const int ZvukPin = 15;
+
+//dotyk
+const int dotykPin1=27;
+const int dotykPin2=14;
 
 //RGB MODUL
 const int redDioda = 32;
@@ -50,6 +58,9 @@ void setup()
   pinMode(ZvukPin, INPUT);
 
   priemerMerani.begin(); //klzavy priemer
+
+  dotykMeranie1.begin();
+  dotykMeranie2.begin();
 }
 
 void svetelnaBrana()
@@ -408,6 +419,24 @@ void Tlieskanie()
   }
 }
 
+void Dotyk(){
+  const int prahovaHodnota = 30;
+  int dotykHodnota1 = dotykMeranie1.reading(touchRead(dotykPin1));
+  int dotykHodnota2 = dotykMeranie2.reading(touchRead(dotykPin2));
+  //u8x8.setFont(u8x8_font_inb33_3x6_n);
+  //u8x8.drawString(0, 2, u8x8_u16toa(dotykMeranie1.reading(touchRead(dotykPin1)), 4));
+  if(dotykHodnota1<prahovaHodnota) digitalWrite(redDioda,HIGH);
+  else digitalWrite(redDioda,LOW);
+  if(dotykHodnota2<prahovaHodnota) digitalWrite(greenDioda,HIGH);
+  else digitalWrite(greenDioda,LOW);
+
+  if(dotykHodnota1<prahovaHodnota && dotykHodnota2<prahovaHodnota){
+    u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
+    u8x8.drawString(0, 4, "VYHRA");
+  }
+
+}
+
 void loop()
 {
   StavModrehoTlacidla = digitalRead(TlacidloModre);
@@ -448,4 +477,6 @@ void loop()
     MiesanieFarieb();
   if (zapnutaHra == true && y == 4)
     Tlieskanie();
+  if (zapnutaHra == true && y == 5)
+    Dotyk();
 }
