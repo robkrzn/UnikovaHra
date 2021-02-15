@@ -31,7 +31,7 @@ movingAvg dotykMeranie2(MERANIADOTYKUPREPRIEMER); ////klzavy priemer pre meranie
 const int TlacidloModre = 18;   //pintlacidla
 const int TlacidloCervene = 19; //pintlacidla
 const int TlacidloZelene = 5;   //pintlacidla
-const int PhotoresistorPin = 2; //pin footorezistora
+const int PhotoresistorPin = 34; //pin footorezistora
 const int ZvukPin = 15;
 
 //dotyk
@@ -59,6 +59,7 @@ void setup()
 {
   u8x8.begin();
   Serial.begin(115200);
+  //pinMode(PhotoresistorPin, INPUT);
 
   pinMode(TlacidloModre, INPUT);
   pinMode(TlacidloCervene, INPUT);
@@ -98,10 +99,12 @@ void setup()
 
 void svetelnaBrana()
 {
+  while(true){
   hodnotaPhotorezistora = analogRead(PhotoresistorPin);
 
   u8x8.setFont(u8x8_font_inb33_3x6_n);
   u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4));
+  }
 }
 
 void morseovka()
@@ -481,8 +484,8 @@ void loop()
     if (!client.connect(host, port))
     {
       Serial.println("pripojenie zlyhalo");
-      delay(5000);
-      return;
+      //delay(5000);
+      //return;
     }
   int a = 0;
   while (client.available())
@@ -492,14 +495,16 @@ void loop()
     buff[a] = ch;
     a++;
   }
+  String buff2(buff);
   if (buff[0] == 's' && buff[1] == 't' && buff[2] == 'a' && buff[3] == 'r' && buff[4] == 't')
   {
     zapnutaHra = true;
   }
-  else
+  else if(buff2!=""){
   {
-    String buff2(buff);
+    //String buff2(buff);
     y = buff2.toInt();
+  }
   }
   for(int z=0;z<20;z++){
     buff[z]=0;
@@ -531,6 +536,11 @@ void loop()
     u8x8.print(nazvyHier[x]);
     u8x8.setCursor(0, 3);
   }
+  /*
+  if(zapnutaHra){
+    client.stop();
+  }
+  */
   //MENU
   if (zapnutaHra == true && y == 0)
     svetelnaBrana();
