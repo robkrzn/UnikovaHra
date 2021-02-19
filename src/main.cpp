@@ -2,6 +2,8 @@
 #include <U8x8lib.h>
 #include <movingAvg.h>
 #include <WiFi.h>
+#include "esp32-hal-adc.h" // potrebne pre ADC
+#include "soc/sens_reg.h" // potrebne pre ADC1
 
 #include "morseovka.h"
 
@@ -14,6 +16,8 @@ const char *password = "1krizan2wifi3";
 
 const char *host = "192.168.1.13";
 const uint16_t port = 1234;
+
+uint64_t reg_b;
 
 char buff[20];
 
@@ -31,8 +35,8 @@ movingAvg dotykMeranie2(MERANIADOTYKUPREPRIEMER); ////klzavy priemer pre meranie
 const int TlacidloModre = 18;   //pintlacidla
 const int TlacidloCervene = 19; //pintlacidla
 const int TlacidloZelene = 5;   //pintlacidla
-const int PhotoresistorPin = 34; //pin footorezistora
-const int ZvukPin = 15;
+const int PhotoresistorPin = 15; //pin footorezistora
+const int ZvukPin = 39;
 
 //dotyk
 const int dotykPin1 = 27;
@@ -76,7 +80,10 @@ void setup()
   dotykMeranie1.begin();
   dotykMeranie2.begin();
 
+  
   //WIFI CAST
+  reg_b = READ_PERI_REG(SENS_SAR_READ_CTRL2_REG);
+
   Serial.print("\n\nPripajam sa k ");
   Serial.println(ssid);
 
@@ -95,12 +102,19 @@ void setup()
   Serial.print(" : ");
   Serial.println(port);
   //KONIEC WIFI CASTI
+  
+}
+int analogRead2(int pin){ //opravuje ADC pri wifi
+  WRITE_PERI_REG(SENS_SAR_READ_CTRL2_REG, reg_b);
+  SET_PERI_REG_MASK(SENS_SAR_READ_CTRL2_REG, SENS_SAR2_DATA_INV);
+  return analogRead(pin);
 }
 
 void svetelnaBrana()
 {
   while(true){
-  hodnotaPhotorezistora = analogRead(PhotoresistorPin);
+
+  hodnotaPhotorezistora = analogRead2(PhotoresistorPin);
 
   u8x8.setFont(u8x8_font_inb33_3x6_n);
   u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4));
@@ -109,6 +123,7 @@ void svetelnaBrana()
 
 void morseovka()
 {
+  while(true){
   bool pismenoHotovo = false;
   int dlzkaPismena = 0;
   int znak[5] = {2, 2, 2, 2, 2};
@@ -118,14 +133,14 @@ void morseovka()
     int pocitadloZnaku = 0;
     int pocitadloMedzery = 0;
 
-    if (priemerMerani.reading(analogRead(PhotoresistorPin)) < prahovaUroven)
+    if (priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven)
     {
-      while ((priemerMerani.reading(analogRead(PhotoresistorPin)) < prahovaUroven) && pocitadloZnaku < 60000)
+      while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven) && pocitadloZnaku < 60000)
       {
         pocitadloZnaku++;
       }
       delay(10);
-      while ((priemerMerani.reading(analogRead(PhotoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 200000)
+      while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 200000)
       {
         pocitadloMedzery++;
       }
@@ -144,13 +159,14 @@ void morseovka()
     if (digitalRead(TlacidloCervene) == true)
     {
       u8x8.setCursor(0, 3);
-      u8x8.print("              ");
+      u8x8.print("                ");
       u8x8.setCursor(0, 3);
     }
   }
   char vyslednyZnak = SDekodovanaMorseovka(dlzkaPismena, znak);
   //Serial.printf(" %c\n", vyslednyZnak);
   u8x8.print(vyslednyZnak);
+  }
 }
 
 void LEDHra()
@@ -401,6 +417,7 @@ void Tlieskanie()
   int pocetTlesknuty = 0;
   while (true)
   {
+    //WRITE_PERI_REG(SENS_SAR_READ_CTRL2_REG, read_ctl2);
     int hodnota = digitalRead(ZvukPin);
 
     if (hodnota == 1)
@@ -480,6 +497,8 @@ void Dotyk()
 
 void loop()
 {
+  
+  //WIFI CAST
   if (!client.connected())
     if (!client.connect(host, port))
     {
@@ -509,6 +528,8 @@ void loop()
   for(int z=0;z<20;z++){
     buff[z]=0;
   }
+  //KONIEC WIFI CASTI
+  
   StavModrehoTlacidla = digitalRead(TlacidloModre);
   StavCervenehoTlacidla = digitalRead(TlacidloCervene);
   if (StavCervenehoTlacidla == true)
@@ -536,11 +557,12 @@ void loop()
     u8x8.print(nazvyHier[x]);
     u8x8.setCursor(0, 3);
   }
-  /*
+  
   if(zapnutaHra){
-    client.stop();
+    //client.stop();
+    //WiFi.disconnect();
   }
-  */
+  
   //MENU
   if (zapnutaHra == true && y == 0)
     svetelnaBrana();
