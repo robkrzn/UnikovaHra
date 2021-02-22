@@ -3,7 +3,7 @@
 #include <movingAvg.h>
 #include <WiFi.h>
 #include "esp32-hal-adc.h" // potrebne pre ADC
-#include "soc/sens_reg.h" // potrebne pre ADC1
+#include "soc/sens_reg.h" // potrebne pre ADC1 https://github.com/espressif/arduino-esp32/issues/102
 
 #include "morseovka.h"
 
