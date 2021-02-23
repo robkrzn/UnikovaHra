@@ -2,8 +2,9 @@
 #include <U8x8lib.h>
 #include <movingAvg.h>
 #include <WiFi.h>
+#include <FirebaseESP32.h>
 #include "esp32-hal-adc.h" // potrebne pre ADC
-#include "soc/sens_reg.h" // potrebne pre ADC1 https://github.com/espressif/arduino-esp32/issues/102
+#include "soc/sens_reg.h"  // potrebne pre ADC1 https://github.com/espressif/arduino-esp32/issues/102
 
 #include "morseovka.h"
 
@@ -11,17 +12,15 @@
 const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj", "Dotyk"}; //nazvy hier z menu
 
 // WIFI CAST
-const char *ssid = "WifiDomaK";
-const char *password = "1krizan2wifi3";
+#define FIREBASE_HOST "unikova-hra-default-rtdb.firebaseio.com"
+#define FIREBASE_AUTH "gvsLlFof5OhtvW9SEFnpdLYzI6lVgJujVxD7HIHc"
+#define WIFI_SSID "WifiDomaK"
+#define WIFI_PASSWORD "1krizan2wifi3"
 
-const char *host = "192.168.1.13";
-const uint16_t port = 1234;
+FirebaseData fireData;
+String cesta = "/Zariadenie/";
 
-uint64_t reg_b;
-
-char buff[20];
-
-WiFiClient client;
+uint64_t reg_b; //oprava ADC
 //KONIEC WIFI CASTI
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
@@ -32,9 +31,9 @@ movingAvg priemerMerani(20); //klzavy priemer pre meranie morseovky
 movingAvg dotykMeranie1(MERANIADOTYKUPREPRIEMER); //klzavy priemer pre meranie dotyku
 movingAvg dotykMeranie2(MERANIADOTYKUPREPRIEMER); ////klzavy priemer pre meranie dotyku
 //definicie pinov
-const int TlacidloModre = 18;   //pintlacidla
-const int TlacidloCervene = 19; //pintlacidla
-const int TlacidloZelene = 5;   //pintlacidla
+const int TlacidloModre = 18;    //pintlacidla
+const int TlacidloCervene = 19;  //pintlacidla
+const int TlacidloZelene = 5;    //pintlacidla
 const int PhotoresistorPin = 15; //pin footorezistora
 const int ZvukPin = 39;
 
@@ -80,31 +79,44 @@ void setup()
   dotykMeranie1.begin();
   dotykMeranie2.begin();
 
-  
   //WIFI CAST
-  reg_b = READ_PERI_REG(SENS_SAR_READ_CTRL2_REG);
+  reg_b = READ_PERI_REG(SENS_SAR_READ_CTRL2_REG); //oprava ADC
 
-  Serial.print("\n\nPripajam sa k ");
-  Serial.println(ssid);
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Pripajam sa k Wifi");
   while (WiFi.status() != WL_CONNECTED)
   {
-    delay(500);
     Serial.print(".");
+    delay(300);
   }
-  Serial.println("\nWiFi connected IP address: ");
-  Serial.println(WiFi.localIP());
-  Serial.print("connecting to ");
-  Serial.print(host);
-  Serial.print(" : ");
-  Serial.println(port);
-  //KONIEC WIFI CASTI
+  Serial.print("\nPripojene s IP: ");
+  IPAddress ip = WiFi.localIP();
+  Serial.println(ip);
+
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
+  Firebase.reconnectWiFi(true);
+  //fireData.setBSSLBufferSize(1024, 1024);
+  fireData.setResponseSize(1024);
+  if (!Firebase.beginStream(fireData, cesta))Serial.println("Problem: " + fireData.errorReason());
   
+  String ipPom = ip.toString();
+  
+  u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+  u8x8.setCursor(0, 7);
+  u8x8.print(ipPom);
+  for (int i = 0; i < ipPom.length(); i++)
+  {
+    if (ipPom[i] == '.')ipPom[i] = '-';
+  }
+  cesta += ipPom + "/";
+
+  Firebase.setString(fireData, cesta + "Id", ipPom);
+  Firebase.setBool(fireData, cesta + "Start", false);
+  Firebase.setInt(fireData, cesta + "Volby", 0);
+  //KONIEC WIFI CASTI
 }
-int analogRead2(int pin){ //opravuje ADC pri wifi
+int analogRead2(int pin)
+{ //opravuje ADC pri wifi
   WRITE_PERI_REG(SENS_SAR_READ_CTRL2_REG, reg_b);
   SET_PERI_REG_MASK(SENS_SAR_READ_CTRL2_REG, SENS_SAR2_DATA_INV);
   return analogRead(pin);
@@ -112,60 +124,62 @@ int analogRead2(int pin){ //opravuje ADC pri wifi
 
 void svetelnaBrana()
 {
-  while(true){
+  while (true)
+  {
 
-  hodnotaPhotorezistora = analogRead2(PhotoresistorPin);
+    hodnotaPhotorezistora = analogRead2(PhotoresistorPin);
 
-  u8x8.setFont(u8x8_font_inb33_3x6_n);
-  u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4));
+    u8x8.setFont(u8x8_font_inb33_3x6_n);
+    u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4));
   }
 }
 
 void morseovka()
 {
-  while(true){
-  bool pismenoHotovo = false;
-  int dlzkaPismena = 0;
-  int znak[5] = {2, 2, 2, 2, 2};
-  int prahovaUroven = 180;
-  while (pismenoHotovo == false)
+  while (true)
   {
-    int pocitadloZnaku = 0;
-    int pocitadloMedzery = 0;
-
-    if (priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven)
+    bool pismenoHotovo = false;
+    int dlzkaPismena = 0;
+    int znak[5] = {2, 2, 2, 2, 2};
+    int prahovaUroven = 180;
+    while (pismenoHotovo == false)
     {
-      while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven) && pocitadloZnaku < 60000)
-      {
-        pocitadloZnaku++;
-      }
-      delay(10);
-      while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 200000)
-      {
-        pocitadloMedzery++;
-      }
-      int pomZnak = rozpoznavacPrvku(pocitadloZnaku); //rozpoznavac znaku
-      if (pomZnak != 2)
-      {
-        znak[dlzkaPismena] = pomZnak;
-        dlzkaPismena++;
-      }
-      else
-        pismenoHotovo = true;
-    }
-    if (pocitadloMedzery > 20000)
-      pismenoHotovo = 1;
+      int pocitadloZnaku = 0;
+      int pocitadloMedzery = 0;
 
-    if (digitalRead(TlacidloCervene) == true)
-    {
-      u8x8.setCursor(0, 3);
-      u8x8.print("                ");
-      u8x8.setCursor(0, 3);
+      if (priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven)
+      {
+        while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven) && pocitadloZnaku < 60000)
+        {
+          pocitadloZnaku++;
+        }
+        delay(10);
+        while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 200000)
+        {
+          pocitadloMedzery++;
+        }
+        int pomZnak = rozpoznavacPrvku(pocitadloZnaku); //rozpoznavac znaku
+        if (pomZnak != 2)
+        {
+          znak[dlzkaPismena] = pomZnak;
+          dlzkaPismena++;
+        }
+        else
+          pismenoHotovo = true;
+      }
+      if (pocitadloMedzery > 20000)
+        pismenoHotovo = 1;
+
+      if (digitalRead(TlacidloCervene) == true)
+      {
+        u8x8.setCursor(0, 3);
+        u8x8.print("                ");
+        u8x8.setCursor(0, 3);
+      }
     }
-  }
-  char vyslednyZnak = SDekodovanaMorseovka(dlzkaPismena, znak);
-  //Serial.printf(" %c\n", vyslednyZnak);
-  u8x8.print(vyslednyZnak);
+    char vyslednyZnak = SDekodovanaMorseovka(dlzkaPismena, znak);
+    //Serial.printf(" %c\n", vyslednyZnak);
+    u8x8.print(vyslednyZnak);
   }
 }
 
@@ -497,39 +511,14 @@ void Dotyk()
 
 void loop()
 {
-  
+
   //WIFI CAST
-  if (!client.connected())
-    if (!client.connect(host, port))
-    {
-      Serial.println("pripojenie zlyhalo");
-      //delay(5000);
-      //return;
-    }
-  int a = 0;
-  while (client.available())
-  {
-    char ch = static_cast<char>(client.read());
-    Serial.print(ch);
-    buff[a] = ch;
-    a++;
-  }
-  String buff2(buff);
-  if (buff[0] == 's' && buff[1] == 't' && buff[2] == 'a' && buff[3] == 'r' && buff[4] == 't')
-  {
-    zapnutaHra = true;
-  }
-  else if(buff2!=""){
-  {
-    //String buff2(buff);
-    y = buff2.toInt();
-  }
-  }
-  for(int z=0;z<20;z++){
-    buff[z]=0;
-  }
+  Firebase.getInt(fireData,cesta+"Volby");
+  if (fireData.dataType() == "int")y=fireData.intData();
+  Firebase.getBlob(fireData,cesta+"Start");
+  if (fireData.dataType() == "boolean")zapnutaHra=fireData.boolData();
   //KONIEC WIFI CASTI
-  
+
   StavModrehoTlacidla = digitalRead(TlacidloModre);
   StavCervenehoTlacidla = digitalRead(TlacidloCervene);
   if (StavCervenehoTlacidla == true)
@@ -540,6 +529,7 @@ void loop()
     y = y + 1;
     if (y > MAXMOZNOSTI - 1)
       y = 0;
+    Firebase.setInt(fireData, cesta + "Volby", y);
     zmenaModrehoTlacidla = false;
   }
   else if (StavModrehoTlacidla == LOW)
@@ -551,18 +541,21 @@ void loop()
   if (x != y)
   {
     x = y;
-    u8x8.clear();
     u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+    u8x8.setCursor(0, 1);
+    u8x8.print("                ");
     u8x8.setCursor(0, 1);
     u8x8.print(nazvyHier[x]);
     u8x8.setCursor(0, 3);
   }
-  
-  if(zapnutaHra){
+
+  if (zapnutaHra)
+  {
+    Firebase.setBool(fireData, cesta + "Start", "true");
     //client.stop();
     //WiFi.disconnect();
   }
-  
+
   //MENU
   if (zapnutaHra == true && y == 0)
     svetelnaBrana();
