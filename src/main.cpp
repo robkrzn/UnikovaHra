@@ -25,7 +25,7 @@ uint64_t reg_b; //oprava ADC
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
 
-movingAvg priemerMerani(20); //klzavy priemer pre meranie morseovky
+movingAvg priemerMerani(50); //klzavy priemer pre meranie morseovky
 
 #define MERANIADOTYKUPREPRIEMER 5
 movingAvg dotykMeranie1(MERANIADOTYKUPREPRIEMER); //klzavy priemer pre meranie dotyku
@@ -141,7 +141,7 @@ void morseovka()
     bool pismenoHotovo = false;
     int dlzkaPismena = 0;
     int znak[5] = {2, 2, 2, 2, 2};
-    int prahovaUroven = 180;
+    int prahovaUroven = 200;
     while (pismenoHotovo == false)
     {
       int pocitadloZnaku = 0;
@@ -158,6 +158,7 @@ void morseovka()
         {
           pocitadloMedzery++;
         }
+
         int pomZnak = rozpoznavacPrvku(pocitadloZnaku); //rozpoznavac znaku
         if (pomZnak != 2)
         {
@@ -178,7 +179,7 @@ void morseovka()
       }
     }
     char vyslednyZnak = SDekodovanaMorseovka(dlzkaPismena, znak);
-    //Serial.printf(" %c\n", vyslednyZnak);
+    Serial.printf(" %c\n", vyslednyZnak);
     u8x8.print(vyslednyZnak);
   }
 }
