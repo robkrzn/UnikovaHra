@@ -514,10 +514,15 @@ void loop()
 {
 
   //WIFI CAST
-  Firebase.getInt(fireData,cesta+"Volby");
-  if (fireData.dataType() == "int")y=fireData.intData();
-  Firebase.getBlob(fireData,cesta+"Start");
-  if (fireData.dataType() == "boolean")zapnutaHra=fireData.boolData();
+  //Firebase.getInt(fireData,cesta+"Volby");
+  Firebase.getInt(fireData,cesta);
+  FirebaseJson &json = fireData.jsonObject();
+  FirebaseJsonData jsonData;
+  json.get(jsonData,"Volby");
+  if (jsonData.type == "int")y=jsonData.intValue;
+  json.get(jsonData,"Start");
+  if (jsonData.type == "bool")zapnutaHra=jsonData.boolValue;
+  
   //KONIEC WIFI CASTI
 
   StavModrehoTlacidla = digitalRead(TlacidloModre);
