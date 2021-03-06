@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <U8x8lib.h>
 #include <movingAvg.h>
-#include <WiFi.h>
 #include <FirebaseESP32.h>
 #include "esp32-hal-adc.h" // potrebne pre ADC
 #include "soc/sens_reg.h"  // potrebne pre ADC1 https://github.com/espressif/arduino-esp32/issues/102
@@ -96,7 +95,7 @@ void setup()
   Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
   Firebase.reconnectWiFi(true);
   //fireData.setBSSLBufferSize(1024, 1024);
-  fireData.setResponseSize(1024);
+  //fireData.setResponseSize(1024);
   if (!Firebase.beginStream(fireData, cesta))Serial.println("Problem: " + fireData.errorReason());
   
   String ipPom = ip.toString();
@@ -113,6 +112,8 @@ void setup()
   Firebase.setString(fireData, cesta + "Id", ipPom);
   Firebase.setBool(fireData, cesta + "Start", false);
   Firebase.setInt(fireData, cesta + "Volby", 0);
+  Firebase.setBool(fireData, cesta + "Hotovo", false);
+  Firebase.setBool(fireData, cesta + "Posledne", false);
   //KONIEC WIFI CASTI
 }
 int analogRead2(int pin)
@@ -522,6 +523,7 @@ void loop()
   if (jsonData.type == "int")y=jsonData.intValue;
   json.get(jsonData,"Start");
   if (jsonData.type == "bool")zapnutaHra=jsonData.boolValue;
+  json.iteratorEnd();
   
   //KONIEC WIFI CASTI
 
