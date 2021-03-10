@@ -7,7 +7,7 @@
 
 #include "morseovka.h"
 
-#define MAXMOZNOSTI 7                                                                                                  //max moznosti hier ktoru su k dispozicii
+#define MAXMOZNOSTI 7                                                                                                                 //max moznosti hier ktoru su k dispozicii
 const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj", "Dotyk", "Vzdialenost"}; //nazvy hier z menu
 
 // WIFI CAST
@@ -29,8 +29,16 @@ movingAvg priemerMerani(50); //klzavy priemer pre meranie morseovky
 #define MERANIADOTYKUPREPRIEMER 5
 movingAvg dotykMeranie1(MERANIADOTYKUPREPRIEMER); //klzavy priemer pre meranie dotyku
 movingAvg dotykMeranie2(MERANIADOTYKUPREPRIEMER); ////klzavy priemer pre meranie dotyku
-//definicie pinov
-const int TlacidloModre = 18;    //pintlacidla
+
+//tlacidla
+bool zmenaModrehoTlacidla;
+int StavCervenehoTlacidla;
+bool zmenaCervenehoTlacidla;
+int y = 0, x = 1;             //pomocne premenne
+const int TlacidloModre = 18; //pintlacidla
+//https://lastminuteengineers.com/handling-esp32-gpio-interrupts-tutorial/
+void IRAM_ATTR tlacidloModrePrerusenie() { zmenaModrehoTlacidla = true; }
+
 const int TlacidloCervene = 19;  //pintlacidla
 const int TlacidloZelene = 5;    //pintlacidla
 const int PhotoresistorPin = 15; //pin footorezistora
@@ -46,13 +54,10 @@ const int greenDioda = 33;
 const int blueDioda = 25;
 
 //globalne pomocne premenne
-int y = 0, x = 1; //pomocne premenne
+
 bool zapnutaHra = false;
 int StavModrehoTlacidla; //nove pomocne tlacidlo
 int hodnotaPhotorezistora;
-bool zmenaModrehoTlacidla;
-int StavCervenehoTlacidla;
-bool zmenaCervenehoTlacidla;
 
 bool LEDHraKoniec = false;
 bool MiesanieFariebKoniec = false;
@@ -68,6 +73,7 @@ void setup()
   //pinMode(PhotoresistorPin, INPUT);
 
   pinMode(TlacidloModre, INPUT);
+  attachInterrupt(TlacidloModre, tlacidloModrePrerusenie, FALLING);
   pinMode(TlacidloCervene, INPUT);
   pinMode(TlacidloZelene, INPUT);
 
@@ -103,29 +109,35 @@ void setup()
   Firebase.reconnectWiFi(true);
   //fireData.setBSSLBufferSize(1024, 1024);
   //fireData.setResponseSize(1024);
-  if (!Firebase.beginStream(fireData, cesta))Serial.println("Problem: " + fireData.errorReason());
-  
+  if (!Firebase.beginStream(fireData, cesta))
+    Serial.println("Problem: " + fireData.errorReason());
+
   String ipPom = ip.toString();
-  
+
   u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
   u8x8.setCursor(0, 7);
   u8x8.print(ipPom);
   for (int i = 0; i < ipPom.length(); i++)
   {
-    if (ipPom[i] == '.')ipPom[i] = '-';
+    if (ipPom[i] == '.')
+      ipPom[i] = '-';
   }
   cesta += ipPom + "/";
-  
-  if(Firebase.getInt(fireData,cesta+"Volby")){  //pri dostupnosti dat sa nastavia predchadzajuce parametre
-    Firebase.getJSON(fireData,cesta);
+
+  if (Firebase.getInt(fireData, cesta + "Volby"))
+  { //pri dostupnosti dat sa nastavia predchadzajuce parametre
+    Firebase.getJSON(fireData, cesta);
     FirebaseJson &json = fireData.jsonObject();
     FirebaseJsonData jsonData;
-    json.get(jsonData,"Volby");
-    if (jsonData.type == "int")y=jsonData.intValue;
+    json.get(jsonData, "Volby");
+    if (jsonData.type == "int")
+      y = jsonData.intValue;
     json.iteratorEnd();
     Firebase.setBool(fireData, cesta + "Start", false);
     Firebase.setBool(fireData, cesta + "Hotovo", false);
-  }else{      //pri nedostupnosti dat sa parametre nastavia nanovo
+  }
+  else
+  { //pri nedostupnosti dat sa parametre nastavia nanovo
     Firebase.setString(fireData, cesta + "Id", ipPom);
     Firebase.setBool(fireData, cesta + "Start", false);
     Firebase.setInt(fireData, cesta + "Volby", 0);
@@ -529,74 +541,87 @@ void Dotyk()
   }
 }
 
-void Vzdialenost(){
+void Vzdialenost()
+{
   while (true)
   {
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
 
-  digitalWrite(trigPin,HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin,LOW);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
 
-  int trvanie = pulseIn(echoPin,HIGH);
-  int dlzka = trvanie*0.034/2;
+    int trvanie = pulseIn(echoPin, HIGH);
+    int dlzka = trvanie * 0.034 / 2;
 
-  u8x8.setFont(u8x8_font_inb33_3x6_n);
-  u8x8.drawString(0, 2, u8x8_u16toa(dlzka, 4));
+    u8x8.setFont(u8x8_font_inb33_3x6_n);
+    u8x8.drawString(0, 2, u8x8_u16toa(dlzka, 4));
   }
-  
-
 }
 void loop()
 {
-  if(!zapnutaHra){
-  //WIFI CAST
-  Firebase.getJSON(fireData,cesta);
-  FirebaseJson &json = fireData.jsonObject();
-  FirebaseJsonData jsonData;
-  json.get(jsonData,"Volby");
-  if (jsonData.type == "int")y=jsonData.intValue;
-  json.get(jsonData,"Start");
-  if (jsonData.type == "bool")zapnutaHra=jsonData.boolValue;
-  json.iteratorEnd();
-  
-  //KONIEC WIFI CASTI
-
-  StavModrehoTlacidla = digitalRead(TlacidloModre);
-  StavCervenehoTlacidla = digitalRead(TlacidloCervene);
-  if (StavCervenehoTlacidla == true)
-    zapnutaHra = true;
-
-  if (StavModrehoTlacidla == HIGH && zmenaModrehoTlacidla && zapnutaHra == false)
+  if (!zapnutaHra)
   {
-    y = y + 1;
-    if (y > MAXMOZNOSTI - 1)
-      y = 0;
-    Firebase.setInt(fireData, cesta + "Volby", y);
-    zmenaModrehoTlacidla = false;
-  }
-  else if (StavModrehoTlacidla == LOW)
-  {
-    zmenaModrehoTlacidla = true;
-    delay(50); //kratky delay kvoli problemom s tlacidlom a doslo len k jednemu stlaceniu
-  }
+    if (zmenaModrehoTlacidla && !zapnutaHra)
+    {
+      y = y + 1;
+      if (y > MAXMOZNOSTI - 1)
+        y = 0;
+      Firebase.setInt(fireData, cesta + "Volby", y);
+      zmenaModrehoTlacidla = false;
+    }
+    //WIFI CAST
+    Firebase.getJSON(fireData, cesta);
+    FirebaseJson &json = fireData.jsonObject();
+    FirebaseJsonData jsonData;
+    json.get(jsonData, "Volby");
+    if (jsonData.type == "int")
+      y = jsonData.intValue;
+    json.get(jsonData, "Start");
+    if (jsonData.type == "bool")
+      zapnutaHra = jsonData.boolValue;
+    json.iteratorEnd();
 
-  if (x != y)
-  {
-    x = y;
-    u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
-    u8x8.setCursor(0, 1);
-    u8x8.print("                ");
-    u8x8.setCursor(0, 1);
-    u8x8.print(nazvyHier[x]);
-    u8x8.setCursor(0, 3);
-  }
+    //KONIEC WIFI CASTI
 
-  if (zapnutaHra)
-  {
-    Firebase.setBool(fireData, cesta + "Start", "true");
-  }
+    //StavModrehoTlacidla = digitalRead(TlacidloModre);
+    StavCervenehoTlacidla = digitalRead(TlacidloCervene);
+    if (StavCervenehoTlacidla == true)
+      zapnutaHra = true;
+    /*
+    if (StavModrehoTlacidla == HIGH && zmenaModrehoTlacidla && zapnutaHra == false)
+    //if (zmenaModrehoTlacidla && zapnutaHra == false)
+    {
+      //y = y + 1;
+      if (y > MAXMOZNOSTI - 1)
+        y = 0;
+      Firebase.setInt(fireData, cesta + "Volby", y);
+      zmenaModrehoTlacidla = false;
+    }
+    else if (StavModrehoTlacidla == LOW)
+    {
+      zmenaModrehoTlacidla = true;
+      delay(50); //kratky delay kvoli problemom s tlacidlom a doslo len k jednemu stlaceniu
+    }
+    */
+
+    if (x != y)
+    {
+      x = y;
+      u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+      u8x8.setCursor(0, 1);
+      u8x8.print("                ");
+      u8x8.setCursor(0, 1);
+      u8x8.print(nazvyHier[x]);
+      u8x8.setCursor(0, 3);
+    }
+
+    if (zapnutaHra)
+    {
+      Firebase.setBool(fireData, cesta + "Start", "true");
+      detachInterrupt(TlacidloModre);
+    }
   }
   //MENU
   if (zapnutaHra == true && y == 0)
