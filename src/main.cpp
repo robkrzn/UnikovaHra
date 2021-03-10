@@ -7,8 +7,8 @@
 
 #include "morseovka.h"
 
-#define MAXMOZNOSTI 6                                                                                                  //max moznosti hier ktoru su k dispozicii
-const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj", "Dotyk"}; //nazvy hier z menu
+#define MAXMOZNOSTI 7                                                                                                  //max moznosti hier ktoru su k dispozicii
+const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj", "Dotyk", "Vzdialenost"}; //nazvy hier z menu
 
 // WIFI CAST
 #define FIREBASE_HOST "unikova-hra-default-rtdb.firebaseio.com"
@@ -57,6 +57,10 @@ bool zmenaCervenehoTlacidla;
 bool LEDHraKoniec = false;
 bool MiesanieFariebKoniec = false;
 
+//HC-SR04
+int8_t trigPin = 17;
+int8_t echoPin = 16;
+
 void setup()
 {
   u8x8.begin();
@@ -72,6 +76,9 @@ void setup()
   pinMode(blueDioda, OUTPUT);
 
   pinMode(ZvukPin, INPUT);
+
+  pinMode(trigPin, OUTPUT); //HC-SR04
+  pinMode(echoPin, INPUT);  //HC-SR04
 
   priemerMerani.begin(); //klzavy priemer
 
@@ -108,12 +115,23 @@ void setup()
     if (ipPom[i] == '.')ipPom[i] = '-';
   }
   cesta += ipPom + "/";
-
-  Firebase.setString(fireData, cesta + "Id", ipPom);
-  Firebase.setBool(fireData, cesta + "Start", false);
-  Firebase.setInt(fireData, cesta + "Volby", 0);
-  Firebase.setBool(fireData, cesta + "Hotovo", false);
-  Firebase.setBool(fireData, cesta + "Posledne", false);
+  
+  if(Firebase.getInt(fireData,cesta+"Volby")){  //pri dostupnosti dat sa nastavia predchadzajuce parametre
+    Firebase.getJSON(fireData,cesta);
+    FirebaseJson &json = fireData.jsonObject();
+    FirebaseJsonData jsonData;
+    json.get(jsonData,"Volby");
+    if (jsonData.type == "int")y=jsonData.intValue;
+    json.iteratorEnd();
+    Firebase.setBool(fireData, cesta + "Start", false);
+    Firebase.setBool(fireData, cesta + "Hotovo", false);
+  }else{      //pri nedostupnosti dat sa parametre nastavia nanovo
+    Firebase.setString(fireData, cesta + "Id", ipPom);
+    Firebase.setBool(fireData, cesta + "Start", false);
+    Firebase.setInt(fireData, cesta + "Volby", 0);
+    Firebase.setBool(fireData, cesta + "Hotovo", false);
+    Firebase.setBool(fireData, cesta + "Posledne", false);
+  }
   //KONIEC WIFI CASTI
 }
 int analogRead2(int pin)
@@ -511,12 +529,30 @@ void Dotyk()
   }
 }
 
+void Vzdialenost(){
+  while (true)
+  {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trigPin,HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin,LOW);
+
+  int trvanie = pulseIn(echoPin,HIGH);
+  int dlzka = trvanie*0.034/2;
+
+  u8x8.setFont(u8x8_font_inb33_3x6_n);
+  u8x8.drawString(0, 2, u8x8_u16toa(dlzka, 4));
+  }
+  
+
+}
 void loop()
 {
-
+  if(!zapnutaHra){
   //WIFI CAST
-  //Firebase.getInt(fireData,cesta+"Volby");
-  Firebase.getInt(fireData,cesta);
+  Firebase.getJSON(fireData,cesta);
   FirebaseJson &json = fireData.jsonObject();
   FirebaseJsonData jsonData;
   json.get(jsonData,"Volby");
@@ -560,10 +596,8 @@ void loop()
   if (zapnutaHra)
   {
     Firebase.setBool(fireData, cesta + "Start", "true");
-    //client.stop();
-    //WiFi.disconnect();
   }
-
+  }
   //MENU
   if (zapnutaHra == true && y == 0)
     svetelnaBrana();
@@ -577,4 +611,6 @@ void loop()
     Tlieskanie();
   if (zapnutaHra == true && y == 5)
     Dotyk();
+  if (zapnutaHra == true && y == 6)
+    Vzdialenost();
 }
