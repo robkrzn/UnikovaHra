@@ -39,6 +39,7 @@ const int TlacidloModre = 18; //pintlacidla
 //https://lastminuteengineers.com/handling-esp32-gpio-interrupts-tutorial/
 void IRAM_ATTR tlacidloModrePrerusenie() { zmenaModrehoTlacidla = true; }
 
+bool zapnutaHra = false;
 const int TlacidloCervene = 19;  //pintlacidla
 const int TlacidloZelene = 5;    //pintlacidla
 const int PhotoresistorPin = 15; //pin footorezistora
@@ -55,7 +56,6 @@ const int blueDioda = 25;
 
 //globalne pomocne premenne
 
-bool zapnutaHra = false;
 int StavModrehoTlacidla; //nove pomocne tlacidlo
 int hodnotaPhotorezistora;
 
@@ -559,6 +559,7 @@ void Vzdialenost()
     u8x8.drawString(0, 2, u8x8_u16toa(dlzka, 4));
   }
 }
+
 void loop()
 {
   if (!zapnutaHra)
@@ -582,31 +583,9 @@ void loop()
     if (jsonData.type == "bool")
       zapnutaHra = jsonData.boolValue;
     json.iteratorEnd();
-
     //KONIEC WIFI CASTI
 
-    //StavModrehoTlacidla = digitalRead(TlacidloModre);
-    StavCervenehoTlacidla = digitalRead(TlacidloCervene);
-    if (StavCervenehoTlacidla == true)
-      zapnutaHra = true;
-    /*
-    if (StavModrehoTlacidla == HIGH && zmenaModrehoTlacidla && zapnutaHra == false)
-    //if (zmenaModrehoTlacidla && zapnutaHra == false)
-    {
-      //y = y + 1;
-      if (y > MAXMOZNOSTI - 1)
-        y = 0;
-      Firebase.setInt(fireData, cesta + "Volby", y);
-      zmenaModrehoTlacidla = false;
-    }
-    else if (StavModrehoTlacidla == LOW)
-    {
-      zmenaModrehoTlacidla = true;
-      delay(50); //kratky delay kvoli problemom s tlacidlom a doslo len k jednemu stlaceniu
-    }
-    */
-
-    if (x != y)
+    if (x != y) // zapis na displej len pri zmene
     {
       x = y;
       u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
@@ -617,10 +596,12 @@ void loop()
       u8x8.setCursor(0, 3);
     }
 
-    if (zapnutaHra)
+    if (digitalRead(TlacidloCervene)&&!zapnutaHra)
     {
       Firebase.setBool(fireData, cesta + "Start", "true");
       detachInterrupt(TlacidloModre);
+      zapnutaHra = true;
+      u8x8.clear();
     }
   }
   //MENU
