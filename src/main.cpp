@@ -2,8 +2,8 @@
 #include <U8x8lib.h>
 #include <movingAvg.h>
 #include <FirebaseESP32.h>
-#include "esp32-hal-adc.h" // potrebne pre ADC
-#include "soc/sens_reg.h"  // potrebne pre ADC1 https://github.com/espressif/arduino-esp32/issues/102
+//#include "esp32-hal-adc.h" // potrebne pre ADC
+//#include "soc/sens_reg.h"  // potrebne pre ADC1 https://github.com/espressif/arduino-esp32/issues/102   od FIREBASE nefunguje
 
 #include "morseovka.h"
 
@@ -19,11 +19,12 @@ const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA",
 FirebaseData fireData;
 String cesta = "/Zariadenie/";
 
-uint64_t reg_b; //oprava ADC
+//uint64_t reg_b; //oprava ADC
 //KONIEC WIFI CASTI
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
 
+movingAvg priemerSvetelnejBrany(2); //klzavy priemer pre svetlenej brany
 movingAvg priemerMerani(50); //klzavy priemer pre meranie morseovky
 
 #define MERANIADOTYKUPREPRIEMER 5
@@ -42,7 +43,7 @@ void IRAM_ATTR tlacidloModrePrerusenie() { zmenaModrehoTlacidla = true; }
 bool zapnutaHra = false;
 const int TlacidloCervene = 19;  //pintlacidla
 const int TlacidloZelene = 5;    //pintlacidla
-const int PhotoresistorPin = 15; //pin footorezistora
+const int PhotoresistorPin = 35; //pin footorezistora
 const int ZvukPin = 39;
 
 //dotyk
@@ -57,7 +58,6 @@ const int blueDioda = 25;
 //globalne pomocne premenne
 
 int StavModrehoTlacidla; //nove pomocne tlacidlo
-int hodnotaPhotorezistora;
 
 bool LEDHraKoniec = false;
 bool MiesanieFariebKoniec = false;
@@ -87,12 +87,13 @@ void setup()
   pinMode(echoPin, INPUT);  //HC-SR04
 
   priemerMerani.begin(); //klzavy priemer
+  priemerSvetelnejBrany.begin(); //klzavy priemer
 
   dotykMeranie1.begin();
   dotykMeranie2.begin();
 
   //WIFI CAST
-  reg_b = READ_PERI_REG(SENS_SAR_READ_CTRL2_REG); //oprava ADC
+  //reg_b = READ_PERI_REG(SENS_SAR_READ_CTRL2_REG); //oprava ADC
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Pripajam sa k Wifi");
@@ -123,7 +124,7 @@ void setup()
       ipPom[i] = '-';
   }
   cesta += ipPom + "/";
-
+  Serial.print("\nNacitanie dat z FireBase");
   if (Firebase.getInt(fireData, cesta + "Volby"))
   { //pri dostupnosti dat sa nastavia predchadzajuce parametre
     Firebase.getJSON(fireData, cesta);
@@ -144,23 +145,42 @@ void setup()
     Firebase.setBool(fireData, cesta + "Hotovo", false);
     Firebase.setBool(fireData, cesta + "Posledne", false);
   }
+  Serial.print("\nData z FireBase precitane\n");
   //KONIEC WIFI CASTI
 }
 int analogRead2(int pin)
 { //opravuje ADC pri wifi
-  WRITE_PERI_REG(SENS_SAR_READ_CTRL2_REG, reg_b);
-  SET_PERI_REG_MASK(SENS_SAR_READ_CTRL2_REG, SENS_SAR2_DATA_INV);
+  //WRITE_PERI_REG(SENS_SAR_READ_CTRL2_REG, reg_b);
+  //SET_PERI_REG_MASK(SENS_SAR_READ_CTRL2_REG, SENS_SAR2_DATA_INV);
   return analogRead(pin);
 }
 
 void svetelnaBrana()
 {
+  int prahovaUroven = 900;
+  int hodnotaPhotorezistora;
+  int pocetPocitadla = 10;
+  int pocitadlo = 0;
+  bool zapnute = false;
+  u8x8.setFont(u8x8_font_inb33_3x6_n);
   while (true)
   {
+    hodnotaPhotorezistora = priemerSvetelnejBrany.reading(analogRead(PhotoresistorPin));
+    //hodnotaPhotorezistora = (analogRead(PhotoresistorPin));
 
-    hodnotaPhotorezistora = analogRead2(PhotoresistorPin);
+    if ((hodnotaPhotorezistora < prahovaUroven))
+      zapnute = true;
+    if (zapnute && hodnotaPhotorezistora > prahovaUroven)
+    {
+      pocitadlo++;
+      zapnute = false;
+      Serial.printf("%d\n", pocitadlo);
+    }
+    if (pocitadlo == pocetPocitadla){
+      pocitadlo = 0;
+      Firebase.setBool(fireData, cesta + "Hotovo", "true");
+    }
 
-    u8x8.setFont(u8x8_font_inb33_3x6_n);
     u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4));
   }
 }
@@ -312,6 +332,7 @@ void LEDHra()
       u8x8.print("                ");
       u8x8.setCursor(0, 4);
       u8x8.print("Vyhral si");
+      Firebase.setBool(fireData, cesta + "Hotovo", "true");
     }
     u8x8.setCursor(0, 3);
     u8x8.print("                ");
@@ -448,6 +469,7 @@ void MiesanieFarieb()
       u8x8.print("                ");
       u8x8.setCursor(0, 4);
       u8x8.print("Vyhral si");
+      Firebase.setBool(fireData, cesta + "Hotovo", "true");
     }
     u8x8.setCursor(0, 3);
     u8x8.print("                ");
@@ -487,6 +509,7 @@ void Tlieskanie()
         digitalWrite(redDioda, true);
         u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
         u8x8.drawString(0, 4, "ZAP");
+        Firebase.setBool(fireData, cesta + "Hotovo", "true");
       }
       else
       {
@@ -538,6 +561,7 @@ void Dotyk()
   {
     u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
     u8x8.drawString(0, 4, "VYHRA");
+    Firebase.setBool(fireData, cesta + "Hotovo", "true");
   }
 }
 
@@ -596,7 +620,7 @@ void loop()
       u8x8.setCursor(0, 3);
     }
 
-    if (digitalRead(TlacidloCervene)&&!zapnutaHra)
+    if (digitalRead(TlacidloCervene) && !zapnutaHra)
     {
       Firebase.setBool(fireData, cesta + "Start", "true");
       detachInterrupt(TlacidloModre);
