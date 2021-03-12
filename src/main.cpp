@@ -96,13 +96,13 @@ void setup()
   //reg_b = READ_PERI_REG(SENS_SAR_READ_CTRL2_REG); //oprava ADC
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Pripajam sa k Wifi");
+  Serial.print("\nPripajam sa k Wifi");
   while (WiFi.status() != WL_CONNECTED)
   {
     Serial.print(".");
     delay(300);
   }
-  Serial.print("\nPripojene s IP: ");
+  Serial.print(".OK\nPripojene s IP: ");
   IPAddress ip = WiFi.localIP();
   Serial.println(ip);
 
@@ -124,7 +124,7 @@ void setup()
       ipPom[i] = '-';
   }
   cesta += ipPom + "/";
-  Serial.print("\nNacitanie dat z FireBase");
+  Serial.print("Nacitanie dat z FireBase");
   if (Firebase.getInt(fireData, cesta + "Volby"))
   { //pri dostupnosti dat sa nastavia predchadzajuce parametre
     Firebase.getJSON(fireData, cesta);
@@ -145,7 +145,7 @@ void setup()
     Firebase.setBool(fireData, cesta + "Hotovo", false);
     Firebase.setBool(fireData, cesta + "Posledne", false);
   }
-  Serial.print("\nData z FireBase precitane\n");
+  Serial.print("...OK\n");
   //KONIEC WIFI CASTI
 }
 int analogRead2(int pin)
@@ -166,7 +166,6 @@ void svetelnaBrana()
   while (true)
   {
     hodnotaPhotorezistora = priemerSvetelnejBrany.reading(analogRead(PhotoresistorPin));
-    //hodnotaPhotorezistora = (analogRead(PhotoresistorPin));
 
     if ((hodnotaPhotorezistora < prahovaUroven))
       zapnute = true;
