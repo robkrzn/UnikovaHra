@@ -47,3 +47,4 @@ const morse_table MorseTabulka[] = {
 
 char SDekodovanaMorseovka(int dlzkaPismena, int Znak[5]);
 int rozpoznavacPrvku(int pocitadloZnaku);
+bool overOdpoved(char odpoved[10]);

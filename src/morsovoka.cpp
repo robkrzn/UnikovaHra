@@ -1,18 +1,19 @@
 #include "morseovka.h"
 
-int rozpoznavacPrvku(int pocitadloZnaku){
-    int znak=2;
-    if ((pocitadloZnaku < 2000) && (pocitadloZnaku >= 1))
-      {
+int rozpoznavacPrvku(int pocitadloZnaku)
+{
+    int znak = 2;
+    if ((pocitadloZnaku < 2500) && (pocitadloZnaku >= 1))
+    {
         Serial.printf(".");
         znak = 0;
-      }
-      else if ((pocitadloZnaku < 6000) && (pocitadloZnaku >= 2000))
-      {
+    }
+    else if ((pocitadloZnaku < 6000) && (pocitadloZnaku >= 2500))
+    {
         Serial.printf("-");
-        znak=1;
-      }
-      return znak;
+        znak = 1;
+    }
+    return znak;
 }
 
 char SDekodovanaMorseovka(int dlzkaPismena, int Znak[5])
@@ -38,4 +39,17 @@ char SDekodovanaMorseovka(int dlzkaPismena, int Znak[5])
         }
     }
     return najdenePiseneno;
+}
+bool overOdpoved(char odpoved[10])
+{
+    if (odpoved[0] == 'F')
+        if (odpoved[1] == 'R')
+            if (odpoved[2] == 'I')
+                if (odpoved[3] == 'U')
+                    if (odpoved[4] == 'N')
+                        if (odpoved[5] == 'I')
+                            if (odpoved[6] == 'Z')
+                                if (odpoved[7] == 'A')
+                                    return true;
+    return false;
 }
