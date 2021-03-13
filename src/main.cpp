@@ -191,16 +191,20 @@ void morseovka()
   u8x8.setCursor(0, 0);
   u8x8.print("Text:");
   u8x8.setCursor(0, 3);
+  char odpoved[10] = {0};
+  int indexOdpovede = 0;
   while (true)
   {
     bool pismenoHotovo = false;
     int dlzkaPismena = 0;
     int znak[5] = {2, 2, 2, 2, 2};
     int prahovaUroven = 800;
+    int pocitadloZnaku = 0;
+    int pocitadloMedzery = 0;
     while (pismenoHotovo == false)
     {
-      int pocitadloZnaku = 0;
-      int pocitadloMedzery = 0;
+      pocitadloZnaku = 0;
+      pocitadloMedzery = 0;
 
       if (priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven)
       {
@@ -224,19 +228,33 @@ void morseovka()
         else
           pismenoHotovo = true;
       }
-      if (pocitadloMedzery > 4000)
+      if (pocitadloMedzery > 5000)
         pismenoHotovo = 1;
-
-      if (digitalRead(TlacidloCervene) == true)
-      {
-        u8x8.setCursor(0, 3);
-        u8x8.print("                ");
-        u8x8.setCursor(0, 3);
-      }
     }
     char vyslednyZnak = SDekodovanaMorseovka(dlzkaPismena, znak);
-    Serial.printf(" %c\n------------\n", vyslednyZnak);
     u8x8.print(vyslednyZnak);
+    Serial.printf(" %c\n------------\n", vyslednyZnak);
+    odpoved[indexOdpovede] = vyslednyZnak;
+    indexOdpovede++;
+    if (indexOdpovede == 9)
+      indexOdpovede = 0;
+    if (overOdpoved(odpoved)) //ak sa zhoduje text s vyhernym textom
+    {
+      Serial.printf("VYHRA");
+      Firebase.setBool(fireData, cesta + "Hotovo", "true");
+      u8x8.setCursor(0, 4);
+      u8x8.print("ULOHA SPLNENA");
+    }
+    if (pocitadloMedzery == 8000) //po zobrazeni slova sa text zmaze
+    {
+      delay(2000);
+      u8x8.setCursor(0, 3);
+      u8x8.print("                ");
+      u8x8.setCursor(0, 3);
+      indexOdpovede = 0;
+      for (size_t i = 0; i < 9; i++)
+        odpoved[i] = 0;
+    }
   }
 }
 
