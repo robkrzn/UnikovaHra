@@ -25,7 +25,7 @@ String cesta = "/Zariadenie/";
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
 
 movingAvg priemerSvetelnejBrany(2); //klzavy priemer pre svetlenej brany
-movingAvg priemerMerani(50); //klzavy priemer pre meranie morseovky
+movingAvg priemerMerani(5);         //klzavy priemer pre meranie morseovky
 
 #define MERANIADOTYKUPREPRIEMER 5
 movingAvg dotykMeranie1(MERANIADOTYKUPREPRIEMER); //klzavy priemer pre meranie dotyku
@@ -35,7 +35,7 @@ movingAvg dotykMeranie2(MERANIADOTYKUPREPRIEMER); ////klzavy priemer pre meranie
 bool zmenaModrehoTlacidla;
 int StavCervenehoTlacidla;
 bool zmenaCervenehoTlacidla;
-int y = 0, x = 1;             //pomocne premenne
+int y = 0, x = 55;            //pomocne premenne
 const int TlacidloModre = 18; //pintlacidla
 //https://lastminuteengineers.com/handling-esp32-gpio-interrupts-tutorial/
 void IRAM_ATTR tlacidloModrePrerusenie() { zmenaModrehoTlacidla = true; }
@@ -86,7 +86,7 @@ void setup()
   pinMode(trigPin, OUTPUT); //HC-SR04
   pinMode(echoPin, INPUT);  //HC-SR04
 
-  priemerMerani.begin(); //klzavy priemer
+  priemerMerani.begin();         //klzavy priemer
   priemerSvetelnejBrany.begin(); //klzavy priemer
 
   dotykMeranie1.begin();
@@ -175,7 +175,8 @@ void svetelnaBrana()
       zapnute = false;
       Serial.printf("%d\n", pocitadlo);
     }
-    if (pocitadlo == pocetPocitadla){
+    if (pocitadlo == pocetPocitadla)
+    {
       pocitadlo = 0;
       Firebase.setBool(fireData, cesta + "Hotovo", "true");
     }
@@ -186,12 +187,16 @@ void svetelnaBrana()
 
 void morseovka()
 {
+  u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+  u8x8.setCursor(0, 0);
+  u8x8.print("Text:");
+  u8x8.setCursor(0, 3);
   while (true)
   {
     bool pismenoHotovo = false;
     int dlzkaPismena = 0;
     int znak[5] = {2, 2, 2, 2, 2};
-    int prahovaUroven = 200;
+    int prahovaUroven = 800;
     while (pismenoHotovo == false)
     {
       int pocitadloZnaku = 0;
@@ -199,17 +204,18 @@ void morseovka()
 
       if (priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven)
       {
-        while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven) && pocitadloZnaku < 60000)
+        while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven) && pocitadloZnaku < 6000)
         {
           pocitadloZnaku++;
         }
         delay(10);
-        while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 200000)
+        while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 8000)
         {
           pocitadloMedzery++;
         }
-
+        Serial.printf("Znak %d ", pocitadloZnaku);
         int pomZnak = rozpoznavacPrvku(pocitadloZnaku); //rozpoznavac znaku
+        Serial.printf("\nMedzera %d\n", pocitadloMedzery);
         if (pomZnak != 2)
         {
           znak[dlzkaPismena] = pomZnak;
@@ -218,7 +224,7 @@ void morseovka()
         else
           pismenoHotovo = true;
       }
-      if (pocitadloMedzery > 20000)
+      if (pocitadloMedzery > 4000)
         pismenoHotovo = 1;
 
       if (digitalRead(TlacidloCervene) == true)
@@ -229,7 +235,7 @@ void morseovka()
       }
     }
     char vyslednyZnak = SDekodovanaMorseovka(dlzkaPismena, znak);
-    Serial.printf(" %c\n", vyslednyZnak);
+    Serial.printf(" %c\n------------\n", vyslednyZnak);
     u8x8.print(vyslednyZnak);
   }
 }
@@ -587,7 +593,7 @@ void loop()
 {
   if (!zapnutaHra)
   {
-    if (zmenaModrehoTlacidla && !zapnutaHra)
+    if (zmenaModrehoTlacidla)
     {
       y = y + 1;
       if (y > MAXMOZNOSTI - 1)
@@ -612,20 +618,21 @@ void loop()
     {
       x = y;
       u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
-      u8x8.setCursor(0, 1);
+      u8x8.setCursor(0, 0);
       u8x8.print("                ");
-      u8x8.setCursor(0, 1);
+      u8x8.setCursor(0, 0);
       u8x8.print(nazvyHier[x]);
-      u8x8.setCursor(0, 3);
+      //u8x8.setCursor(0, 3);
     }
 
-    if (digitalRead(TlacidloCervene) && !zapnutaHra)
+    if (digitalRead(TlacidloCervene) || zapnutaHra)
     {
       Firebase.setBool(fireData, cesta + "Start", "true");
       detachInterrupt(TlacidloModre);
       zapnutaHra = true;
       u8x8.clear();
     }
+    //Serial.printf(".");
   }
   //MENU
   if (zapnutaHra == true && y == 0)

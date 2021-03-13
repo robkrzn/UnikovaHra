@@ -2,12 +2,12 @@
 
 int rozpoznavacPrvku(int pocitadloZnaku){
     int znak=2;
-    if ((pocitadloZnaku < 15000) && (pocitadloZnaku >= 1))
+    if ((pocitadloZnaku < 2000) && (pocitadloZnaku >= 1))
       {
         Serial.printf(".");
         znak = 0;
       }
-      else if ((pocitadloZnaku < 40000) && (pocitadloZnaku >= 15000))
+      else if ((pocitadloZnaku < 6000) && (pocitadloZnaku >= 2000))
       {
         Serial.printf("-");
         znak=1;
