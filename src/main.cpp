@@ -2,24 +2,21 @@
 #include <U8x8lib.h>
 #include <movingAvg.h>
 #include <FirebaseESP32.h>
-//#include "esp32-hal-adc.h" // potrebne pre ADC
-//#include "soc/sens_reg.h"  // potrebne pre ADC1 https://github.com/espressif/arduino-esp32/issues/102   od FIREBASE nefunguje
 
 #include "morseovka.h"
 
-#define MAXMOZNOSTI 7                                                                                                                 //max moznosti hier ktoru su k dispozicii
+#define MAXMOZNOSTI 7  //max moznosti hier ktoru su k dispozicii
 const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj", "Dotyk", "Vzdialenost"}; //nazvy hier z menu
 
 // WIFI CAST
-#define FIREBASE_HOST "unikova-hra-default-rtdb.firebaseio.com"
+#define FIREBASE_HOST "unikova-hra-default-rtdb.firebaseio.com" //databaza udaje
 #define FIREBASE_AUTH "gvsLlFof5OhtvW9SEFnpdLYzI6lVgJujVxD7HIHc"
-#define WIFI_SSID "WifiDomaK"
-#define WIFI_PASSWORD "1krizan2wifi3"
+#define WIFI_SSID "WifiDomaK"   //wifi meno
+#define WIFI_PASSWORD "1krizan2wifi3" //wifi heslo
 
-FirebaseData fireData;
-String cesta = "/Zariadenie/";
+FirebaseData fireData;          //databaza
+String cesta = "/Zariadenie/";  //cestat k databaze
 
-//uint64_t reg_b; //oprava ADC
 //KONIEC WIFI CASTI
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
@@ -33,18 +30,15 @@ movingAvg dotykMeranie2(MERANIADOTYKUPREPRIEMER); ////klzavy priemer pre meranie
 
 //tlacidla
 bool zmenaModrehoTlacidla;
-int StavCervenehoTlacidla;
-bool zmenaCervenehoTlacidla;
 int y = 0, x = 55;            //pomocne premenne
-const int TlacidloModre = 18; //pintlacidla
-//https://lastminuteengineers.com/handling-esp32-gpio-interrupts-tutorial/
+const int tlacidloModre = 18; //pintlacidla
 void IRAM_ATTR tlacidloModrePrerusenie() { zmenaModrehoTlacidla = true; }
 
 bool zapnutaHra = false;
-const int TlacidloCervene = 19;  //pintlacidla
-const int TlacidloZelene = 5;    //pintlacidla
-const int PhotoresistorPin = 35; //pin footorezistora
-const int ZvukPin = 39;
+const int tlacidloCervene = 19;  //pintlacidla
+const int tlacidloZelene = 5;    //pintlacidla
+const int photoresistorPin = 35; //pin footorezistora
+const int zvukPin = 39;
 
 //dotyk
 const int dotykPin1 = 27;
@@ -57,10 +51,10 @@ const int blueDioda = 25;
 
 //globalne pomocne premenne
 
-int StavModrehoTlacidla; //nove pomocne tlacidlo
+int stavModrehoTlacidla; //nove pomocne tlacidlo
 
 bool LEDHraKoniec = false;
-bool MiesanieFariebKoniec = false;
+bool miesanieFariebKoniec = false;
 
 //HC-SR04
 int8_t trigPin = 17;
@@ -68,20 +62,20 @@ int8_t echoPin = 16;
 
 void setup()
 {
-  u8x8.begin();
-  Serial.begin(115200);
-  //pinMode(PhotoresistorPin, INPUT);
+  u8x8.begin(); //inicializacia displeja
+  Serial.begin(115200); //nestavenie komunikacnej rychlosti
+  //pinMode(photoresistorPin, INPUT);
 
-  pinMode(TlacidloModre, INPUT);
-  attachInterrupt(TlacidloModre, tlacidloModrePrerusenie, FALLING);
-  pinMode(TlacidloCervene, INPUT);
-  pinMode(TlacidloZelene, INPUT);
+  pinMode(tlacidloModre, INPUT);  //nastavenie vystupov
+  attachInterrupt(tlacidloModre, tlacidloModrePrerusenie, FALLING);
+  pinMode(tlacidloCervene, INPUT);
+  pinMode(tlacidloZelene, INPUT);
 
   pinMode(redDioda, OUTPUT); //RGB dioda
   pinMode(greenDioda, OUTPUT);
   pinMode(blueDioda, OUTPUT);
 
-  pinMode(ZvukPin, INPUT);
+  pinMode(zvukPin, INPUT);
 
   pinMode(trigPin, OUTPUT); //HC-SR04
   pinMode(echoPin, INPUT);  //HC-SR04
@@ -89,57 +83,54 @@ void setup()
   priemerMerani.begin();         //klzavy priemer
   priemerSvetelnejBrany.begin(); //klzavy priemer
 
-  dotykMeranie1.begin();
-  dotykMeranie2.begin();
+  dotykMeranie1.begin();    //klzavy priemer
+  dotykMeranie2.begin();    //klzavy priemer
 
   //WIFI CAST
-  //reg_b = READ_PERI_REG(SENS_SAR_READ_CTRL2_REG); //oprava ADC
 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("\nPripajam sa k Wifi");
-  while (WiFi.status() != WL_CONNECTED)
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD); //nastavenie udajov wifi
+  Serial.print("\nPripajam sa k Wifi"); //info vypis
+  while (WiFi.status() != WL_CONNECTED) //pokusanie sa pripojit
   {
     Serial.print(".");
     delay(300);
   }
   Serial.print(".OK\nPripojene s IP: ");
-  IPAddress ip = WiFi.localIP();
+  IPAddress ip = WiFi.localIP();  //ulozenie IP adresy
   Serial.println(ip);
 
-  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
-  Firebase.reconnectWiFi(true);
-  //fireData.setBSSLBufferSize(1024, 1024);
-  //fireData.setResponseSize(1024);
-  if (!Firebase.beginStream(fireData, cesta))
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH); //nastavenie udajov databazy
+  Firebase.reconnectWiFi(true); //aktivovane znovu pripajanie
+  if (!Firebase.beginStream(fireData, cesta)) //pokus pripojit sa k databaze
     Serial.println("Problem: " + fireData.errorReason());
 
   String ipPom = ip.toString();
 
-  u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+  u8x8.setFont(u8x8_font_amstrad_cpc_extended_f); //vypis na displej
   u8x8.setCursor(0, 7);
   u8x8.print(ipPom);
-  for (int i = 0; i < ipPom.length(); i++)
+  for (int i = 0; i < ipPom.length(); i++)  //v ip adrese nahradenie bodiek ciarkami
   {
     if (ipPom[i] == '.')
       ipPom[i] = '-';
   }
-  cesta += ipPom + "/";
+  cesta += ipPom + "/"; //doplnenie cesty
   Serial.print("Nacitanie dat z FireBase");
   if (Firebase.getInt(fireData, cesta + "Volby"))
   { //pri dostupnosti dat sa nastavia predchadzajuce parametre
-    Firebase.getJSON(fireData, cesta);
-    FirebaseJson &json = fireData.jsonObject();
+    Firebase.getJSON(fireData, cesta);  //ziskanie udajov
+    FirebaseJson &json = fireData.jsonObject(); //formatovanie JSON dat
     FirebaseJsonData jsonData;
     json.get(jsonData, "Volby");
     if (jsonData.type == "int")
       y = jsonData.intValue;
     json.iteratorEnd();
-    Firebase.setBool(fireData, cesta + "Start", false);
+    Firebase.setBool(fireData, cesta + "Start", false); //nastavanie udajov
     Firebase.setBool(fireData, cesta + "Hotovo", false);
   }
   else
   { //pri nedostupnosti dat sa parametre nastavia nanovo
-    Firebase.setString(fireData, cesta + "Id", ipPom);
+    Firebase.setString(fireData, cesta + "Id", ipPom);  //nastavenie noveho zariadenia
     Firebase.setBool(fireData, cesta + "Start", false);
     Firebase.setInt(fireData, cesta + "Volby", 0);
     Firebase.setBool(fireData, cesta + "Hotovo", false);
@@ -147,12 +138,6 @@ void setup()
   }
   Serial.print("...OK\n");
   //KONIEC WIFI CASTI
-}
-int analogRead2(int pin)
-{ //opravuje ADC pri wifi
-  //WRITE_PERI_REG(SENS_SAR_READ_CTRL2_REG, reg_b);
-  //SET_PERI_REG_MASK(SENS_SAR_READ_CTRL2_REG, SENS_SAR2_DATA_INV);
-  return analogRead(pin);
 }
 
 void svetelnaBrana()
@@ -165,7 +150,7 @@ void svetelnaBrana()
   u8x8.setFont(u8x8_font_inb33_3x6_n);
   while (true)
   {
-    hodnotaPhotorezistora = priemerSvetelnejBrany.reading(analogRead(PhotoresistorPin));
+    hodnotaPhotorezistora = priemerSvetelnejBrany.reading(analogRead(photoresistorPin));
 
     if ((hodnotaPhotorezistora < prahovaUroven))
       zapnute = true;
@@ -206,14 +191,14 @@ void morseovka()
       pocitadloZnaku = 0;
       pocitadloMedzery = 0;
 
-      if (priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven)
+      if (priemerMerani.reading(analogRead(photoresistorPin)) < prahovaUroven)
       {
-        while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) < prahovaUroven) && pocitadloZnaku < 6000)
+        while ((priemerMerani.reading(analogRead(photoresistorPin)) < prahovaUroven) && pocitadloZnaku < 6000)
         {
           pocitadloZnaku++;
         }
         delay(10);
-        while ((priemerMerani.reading(analogRead2(PhotoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 8000)
+        while ((priemerMerani.reading(analogRead(photoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 8000)
         {
           pocitadloMedzery++;
         }
@@ -231,7 +216,7 @@ void morseovka()
       if (pocitadloMedzery > 5000)
         pismenoHotovo = 1;
     }
-    char vyslednyZnak = SDekodovanaMorseovka(dlzkaPismena, znak);
+    char vyslednyZnak = dekodovanaMorseovka(dlzkaPismena, znak);
     u8x8.print(vyslednyZnak);
     Serial.printf(" %c\n------------\n", vyslednyZnak);
     odpoved[indexOdpovede] = vyslednyZnak;
@@ -273,14 +258,14 @@ void LEDHra()
       while (koloUkoncene == false)
       {
         digitalWrite(redDioda, HIGH);
-        if (digitalRead(TlacidloCervene) == true)
+        if (digitalRead(tlacidloCervene) == true)
         {
           digitalWrite(redDioda, LOW);
           pocitadloKol++;
           koloUkoncene = true;
           Serial.printf("\nCervena  dobre %d", pocitadloKol);
         }
-        else if (digitalRead(TlacidloModre) || digitalRead(TlacidloZelene))
+        else if (digitalRead(tlacidloModre) || digitalRead(tlacidloZelene))
         {
           digitalWrite(redDioda, LOW);
           prehra = true;
@@ -295,14 +280,14 @@ void LEDHra()
       while (koloUkoncene == false)
       {
         digitalWrite(greenDioda, HIGH);
-        if (digitalRead(TlacidloZelene) == true)
+        if (digitalRead(tlacidloZelene) == true)
         {
           digitalWrite(greenDioda, LOW);
           pocitadloKol++;
           koloUkoncene = true;
           Serial.printf("\nZelena  dobre %d", pocitadloKol);
         }
-        else if (digitalRead(TlacidloModre) || digitalRead(TlacidloCervene))
+        else if (digitalRead(tlacidloModre) || digitalRead(tlacidloCervene))
         {
           digitalWrite(greenDioda, LOW);
           prehra = true;
@@ -317,14 +302,14 @@ void LEDHra()
       while (koloUkoncene == false)
       {
         digitalWrite(blueDioda, HIGH);
-        if (digitalRead(TlacidloModre) == true)
+        if (digitalRead(tlacidloModre) == true)
         {
           digitalWrite(blueDioda, LOW);
           pocitadloKol++;
           koloUkoncene = true;
           Serial.printf("\nModra  dobre %d", pocitadloKol);
         }
-        else if (digitalRead(TlacidloCervene) || digitalRead(TlacidloZelene))
+        else if (digitalRead(tlacidloCervene) || digitalRead(tlacidloZelene))
         {
           digitalWrite(blueDioda, LOW);
           prehra = true;
@@ -364,11 +349,11 @@ void LEDHra()
   }
 }
 
-void MiesanieFarieb()
+void miesanieFarieb()
 {
   int pocitadloKol = 0;
   int maxKol = 5;
-  while (MiesanieFariebKoniec == false)
+  while (miesanieFariebKoniec == false)
   {
     delay(1000);
     digitalWrite(greenDioda, LOW);
@@ -385,7 +370,7 @@ void MiesanieFarieb()
       u8x8.print("Fialova");
       while (koloUkoncene == false)
       {
-        if (digitalRead(TlacidloCervene) && digitalRead(TlacidloModre))
+        if (digitalRead(tlacidloCervene) && digitalRead(tlacidloModre))
         {
           digitalWrite(redDioda, HIGH);
           digitalWrite(blueDioda, HIGH);
@@ -393,7 +378,7 @@ void MiesanieFarieb()
           koloUkoncene = true;
           Serial.printf("\nFiaolova  dobre %d", pocitadloKol);
         }
-        else if (digitalRead(TlacidloZelene))
+        else if (digitalRead(tlacidloZelene))
         {
           prehra = true;
           koloUkoncene = true;
@@ -410,7 +395,7 @@ void MiesanieFarieb()
       u8x8.print("Tyrkysova");
       while (koloUkoncene == false)
       {
-        if (digitalRead(TlacidloZelene) && digitalRead(TlacidloModre))
+        if (digitalRead(tlacidloZelene) && digitalRead(tlacidloModre))
         {
           digitalWrite(greenDioda, HIGH);
           digitalWrite(blueDioda, HIGH);
@@ -418,7 +403,7 @@ void MiesanieFarieb()
           koloUkoncene = true;
           Serial.printf("\nTyrkysova  dobre %d", pocitadloKol);
         }
-        else if (digitalRead(TlacidloCervene))
+        else if (digitalRead(tlacidloCervene))
         {
           prehra = true;
           koloUkoncene = true;
@@ -435,7 +420,7 @@ void MiesanieFarieb()
       u8x8.print("Zlta");
       while (koloUkoncene == false)
       {
-        if (digitalRead(TlacidloZelene) && digitalRead(TlacidloCervene))
+        if (digitalRead(tlacidloZelene) && digitalRead(tlacidloCervene))
         {
           digitalWrite(greenDioda, HIGH);
           digitalWrite(redDioda, HIGH);
@@ -443,7 +428,7 @@ void MiesanieFarieb()
           koloUkoncene = true;
           Serial.printf("\nZlta  dobre %d", pocitadloKol);
         }
-        else if (digitalRead(TlacidloModre))
+        else if (digitalRead(tlacidloModre))
         {
           prehra = true;
           koloUkoncene = true;
@@ -460,7 +445,7 @@ void MiesanieFarieb()
       u8x8.print("Biela");
       while (koloUkoncene == false)
       {
-        if (digitalRead(TlacidloZelene) && digitalRead(TlacidloCervene) && digitalRead(TlacidloModre))
+        if (digitalRead(tlacidloZelene) && digitalRead(tlacidloCervene) && digitalRead(tlacidloModre))
         {
           digitalWrite(greenDioda, HIGH);
           digitalWrite(redDioda, HIGH);
@@ -486,7 +471,7 @@ void MiesanieFarieb()
     }
     if (pocitadloKol == maxKol)
     {
-      MiesanieFariebKoniec = true;
+      miesanieFariebKoniec = true;
       Serial.printf("\nVyhra  dobre %d", pocitadloKol);
       u8x8.setCursor(0, 4);
       u8x8.print("                ");
@@ -501,7 +486,7 @@ void MiesanieFarieb()
   }
 }
 
-void Tlieskanie()
+void tlieskanie()
 {
   bool zap = false;
   int casovac = 0;
@@ -509,7 +494,7 @@ void Tlieskanie()
   while (true)
   {
     //WRITE_PERI_REG(SENS_SAR_READ_CTRL2_REG, read_ctl2);
-    int hodnota = digitalRead(ZvukPin);
+    int hodnota = digitalRead(zvukPin);
 
     if (hodnota == 1)
     {
@@ -564,7 +549,7 @@ void Tlieskanie()
   }
 }
 
-void Dotyk()
+void dotyk()
 {
   const int prahovaHodnota = 30;
   int dotykHodnota1 = dotykMeranie1.reading(touchRead(dotykPin1));
@@ -588,7 +573,7 @@ void Dotyk()
   }
 }
 
-void Vzdialenost()
+void vzdialenost()
 {
   while (true)
   {
@@ -643,10 +628,10 @@ void loop()
       //u8x8.setCursor(0, 3);
     }
 
-    if (digitalRead(TlacidloCervene) || zapnutaHra)
+    if (digitalRead(tlacidloCervene) || zapnutaHra)
     {
       Firebase.setBool(fireData, cesta + "Start", "true");
-      detachInterrupt(TlacidloModre);
+      detachInterrupt(tlacidloModre);
       zapnutaHra = true;
       u8x8.clear();
     }
@@ -660,11 +645,11 @@ void loop()
   if (zapnutaHra == true && y == 2)
     LEDHra();
   if (zapnutaHra == true && y == 3)
-    MiesanieFarieb();
+    miesanieFarieb();
   if (zapnutaHra == true && y == 4)
-    Tlieskanie();
+    tlieskanie();
   if (zapnutaHra == true && y == 5)
-    Dotyk();
+    dotyk();
   if (zapnutaHra == true && y == 6)
-    Vzdialenost();
+    vzdialenost();
 }
