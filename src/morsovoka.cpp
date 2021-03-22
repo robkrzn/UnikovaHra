@@ -16,7 +16,7 @@ int rozpoznavacPrvku(int pocitadloZnaku)
     return znak;
 }
 
-char SDekodovanaMorseovka(int dlzkaPismena, int Znak[5])
+char dekodovanaMorseovka(int dlzkaPismena, int Znak[5])
 {
     char najdenePiseneno = 0;
     for (int i = 0; i < 36; i++)
