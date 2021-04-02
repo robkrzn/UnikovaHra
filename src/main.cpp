@@ -55,6 +55,7 @@ int stavModrehoTlacidla; //nove pomocne tlacidlo
 
 
 bool hotovo = false;
+String ipPom;
 
 const int relePin = 26;
 
@@ -107,9 +108,11 @@ void setup()
   if (!Firebase.beginStream(fireData, cesta)) //pokus pripojit sa k databaze
     Serial.println("Problem: " + fireData.errorReason());
 
-  String ipPom = ip.toString();
+  ipPom = ip.toString();
 
   u8x8.setFont(u8x8_font_amstrad_cpc_extended_f); //vypis na displej
+  u8x8.setCursor(0, 6);
+  u8x8.print("~~~~~~~~~~~~~~~~");
   u8x8.setCursor(0, 7);
   u8x8.print(ipPom);
   for (int i = 0; i < ipPom.length(); i++)  //v ip adrese nahradenie bodiek ciarkami
@@ -141,6 +144,11 @@ void setup()
   }
   Serial.print("...OK\n");
   //KONIEC WIFI CASTI
+  u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+  u8x8.setCursor(6, 0);
+  u8x8.print("MENU");
+  u8x8.setCursor(0, 1);
+  u8x8.print("~~~~~~~~~~~~~~~~");
 }
 
 void svetelnaBrana()
@@ -648,9 +656,9 @@ void loop()
     {
       x = y;
       u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
-      u8x8.setCursor(0, 0);
+      u8x8.setCursor(0, 3);
       u8x8.print("                ");
-      u8x8.setCursor(0, 0);
+      u8x8.setCursor(0, 3);
       u8x8.print(nazvyHier[x]);
       //u8x8.setCursor(0, 3);
     }
@@ -696,6 +704,15 @@ void loop()
       attachInterrupt(tlacidloModre, tlacidloModrePrerusenie, FALLING);
       x=55;
       u8x8.clear();
+      u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+      u8x8.setCursor(0, 0);
+      u8x8.print("MENU");
+      u8x8.setCursor(0, 1);
+      u8x8.print("~~~~~~~~~~~~~~~~");
+      u8x8.setCursor(0, 6);
+      u8x8.print("~~~~~~~~~~~~~~~~");
+      u8x8.setCursor(0, 7);
+      u8x8.print(ipPom);
     }
   }
 }
