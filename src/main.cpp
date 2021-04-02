@@ -53,8 +53,10 @@ const int blueDioda = 25;
 
 int stavModrehoTlacidla; //nove pomocne tlacidlo
 
-bool LEDHraKoniec = false;
-bool miesanieFariebKoniec = false;
+
+bool hotovo = false;
+
+const int relePin = 26;
 
 //HC-SR04
 int8_t trigPin = 17;
@@ -74,6 +76,7 @@ void setup()
   pinMode(redDioda, OUTPUT); //RGB dioda
   pinMode(greenDioda, OUTPUT);
   pinMode(blueDioda, OUTPUT);
+  pinMode(relePin, OUTPUT); //relevystup
 
   pinMode(zvukPin, INPUT);
 
@@ -142,13 +145,13 @@ void setup()
 
 void svetelnaBrana()
 {
-  int prahovaUroven = 900;
+  int prahovaUroven = 350;
   int hodnotaPhotorezistora;
   int pocetPocitadla = 10;
   int pocitadlo = 0;
   bool zapnute = false;
   u8x8.setFont(u8x8_font_inb33_3x6_n);
-  while (true)
+  while (!hotovo)
   {
     hodnotaPhotorezistora = priemerSvetelnejBrany.reading(analogRead(photoresistorPin));
 
@@ -160,13 +163,18 @@ void svetelnaBrana()
       zapnute = false;
       Serial.printf("%d\n", pocitadlo);
     }
+    u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4)); //info vypis o hodnote
+
     if (pocitadlo == pocetPocitadla)
     {
       pocitadlo = 0;
       Firebase.setBool(fireData, cesta + "Hotovo", "true");
+      hotovo=true;
+      u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+      u8x8.setCursor(0, 1);
+      u8x8.print("ULOHA SPLNENA");
     }
 
-    u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4));
   }
 }
 
@@ -178,7 +186,7 @@ void morseovka()
   u8x8.setCursor(0, 3);
   char odpoved[10] = {0};
   int indexOdpovede = 0;
-  while (true)
+  while (!hotovo)
   {
     bool pismenoHotovo = false;
     int dlzkaPismena = 0;
@@ -229,6 +237,7 @@ void morseovka()
       Firebase.setBool(fireData, cesta + "Hotovo", "true");
       u8x8.setCursor(0, 4);
       u8x8.print("ULOHA SPLNENA");
+      hotovo = true;
     }
     if (pocitadloMedzery == 8000) //po zobrazeni slova sa text zmaze
     {
@@ -247,7 +256,7 @@ void LEDHra()
 {
   int pocitadloKol = 0;
   int maxKol = 5;
-  while (LEDHraKoniec == false)
+  while (hotovo == false)
   {
     delay(1000);
     bool prehra = false;
@@ -334,7 +343,7 @@ void LEDHra()
     }
     if (pocitadloKol == maxKol)
     {
-      LEDHraKoniec = true;
+      hotovo = true;
       Serial.printf("\nVyhra  dobre %d", pocitadloKol);
       u8x8.setCursor(0, 4);
       u8x8.print("                ");
@@ -353,7 +362,7 @@ void miesanieFarieb()
 {
   int pocitadloKol = 0;
   int maxKol = 5;
-  while (miesanieFariebKoniec == false)
+  while (hotovo == false)
   {
     delay(1000);
     digitalWrite(greenDioda, LOW);
@@ -471,7 +480,7 @@ void miesanieFarieb()
     }
     if (pocitadloKol == maxKol)
     {
-      miesanieFariebKoniec = true;
+      hotovo = true;
       Serial.printf("\nVyhra  dobre %d", pocitadloKol);
       u8x8.setCursor(0, 4);
       u8x8.print("                ");
@@ -491,11 +500,9 @@ void tlieskanie()
   bool zap = false;
   int casovac = 0;
   int pocetTlesknuty = 0;
-  while (true)
+  while (!hotovo)
   {
-    //WRITE_PERI_REG(SENS_SAR_READ_CTRL2_REG, read_ctl2);
     int hodnota = digitalRead(zvukPin);
-
     if (hodnota == 1)
     {
       pocetTlesknuty++;
@@ -552,30 +559,35 @@ void tlieskanie()
 void dotyk()
 {
   const int prahovaHodnota = 30;
-  int dotykHodnota1 = dotykMeranie1.reading(touchRead(dotykPin1));
-  int dotykHodnota2 = dotykMeranie2.reading(touchRead(dotykPin2));
-  //u8x8.setFont(u8x8_font_inb33_3x6_n);
-  //u8x8.drawString(0, 2, u8x8_u16toa(dotykMeranie1.reading(touchRead(dotykPin1)), 4));
-  if (dotykHodnota1 < prahovaHodnota)
-    digitalWrite(redDioda, HIGH);
-  else
-    digitalWrite(redDioda, LOW);
-  if (dotykHodnota2 < prahovaHodnota)
-    digitalWrite(greenDioda, HIGH);
-  else
-    digitalWrite(greenDioda, LOW);
+  while(!hotovo){
+    int dotykHodnota1 = dotykMeranie1.reading(touchRead(dotykPin1));
+    int dotykHodnota2 = dotykMeranie2.reading(touchRead(dotykPin2));
+    //u8x8.setFont(u8x8_font_inb33_3x6_n);
+    //u8x8.drawString(0, 2, u8x8_u16toa(dotykMeranie1.reading(touchRead(dotykPin1)), 4));
+    if (dotykHodnota1 < prahovaHodnota)
+      digitalWrite(redDioda, HIGH);
+    else
+      digitalWrite(redDioda, LOW);
+    if (dotykHodnota2 < prahovaHodnota)
+      digitalWrite(greenDioda, HIGH);
+    else
+      digitalWrite(greenDioda, LOW);
 
-  if (dotykHodnota1 < prahovaHodnota && dotykHodnota2 < prahovaHodnota)
-  {
-    u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
-    u8x8.drawString(0, 4, "VYHRA");
-    Firebase.setBool(fireData, cesta + "Hotovo", "true");
+    if (dotykHodnota1 < prahovaHodnota && dotykHodnota2 < prahovaHodnota)
+    {
+      u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
+      u8x8.drawString(0, 4, "VYHRA");
+      Firebase.setBool(fireData, cesta + "Hotovo", "true");
+      hotovo = true;
+    }
   }
 }
 
 void vzdialenost()
 {
-  while (true)
+  int pozadovanaVzdialenost = 15;
+  int casovac = 0;
+  while (!hotovo)
   {
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);
@@ -589,6 +601,21 @@ void vzdialenost()
 
     u8x8.setFont(u8x8_font_inb33_3x6_n);
     u8x8.drawString(0, 2, u8x8_u16toa(dlzka, 4));
+    if(dlzka>pozadovanaVzdialenost-1 && dlzka < pozadovanaVzdialenost +1){
+        casovac++;
+        digitalWrite(greenDioda,HIGH);
+        if(casovac>100){
+          u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
+          u8x8.drawString(0, 0, "VYHRA");
+          Firebase.setBool(fireData, cesta + "Hotovo", "true");
+          hotovo = true;
+          digitalWrite(greenDioda,LOW);
+        }
+    }else{
+      digitalWrite(greenDioda,LOW);
+      Serial.printf("Reset %d\n", casovac);
+      casovac=0;
+    }
   }
 }
 
@@ -636,7 +663,7 @@ void loop()
       u8x8.clear();
     }
     //Serial.printf(".");
-  }
+  
   //MENU
   if (zapnutaHra == true && y == 0)
     svetelnaBrana();
@@ -652,4 +679,23 @@ void loop()
     dotyk();
   if (zapnutaHra == true && y == 6)
     vzdialenost();
+  }
+  if(hotovo  && zapnutaHra){
+    digitalWrite(relePin,HIGH); //zopnutie rele
+    Firebase.getJSON(fireData, cesta);
+    FirebaseJson &json = fireData.jsonObject();
+    FirebaseJsonData jsonData;
+    json.get(jsonData, "Start");
+    if (jsonData.type == "bool")
+      zapnutaHra = jsonData.boolValue;
+    json.iteratorEnd();
+    if(!zapnutaHra){
+      hotovo=false;
+      digitalWrite(relePin,LOW);
+      Firebase.setBool(fireData, cesta + "Hotovo", "false");
+      attachInterrupt(tlacidloModre, tlacidloModrePrerusenie, FALLING);
+      x=55;
+      u8x8.clear();
+    }
+  }
 }
