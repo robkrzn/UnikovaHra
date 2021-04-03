@@ -17,7 +17,8 @@ const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA",
 FirebaseData fireData;          //databaza
 String cesta = "/Zariadenie/";  //cestat k databaze
 bool online = false;
-
+int LEDidentifikator=0;
+bool LEDzmena = true; //prve zopnutie diod
 //KONIEC WIFI CASTI
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
@@ -133,6 +134,9 @@ void setup()
     json.get(jsonData, "Volby");
     if (jsonData.type == "int")
       y = jsonData.intValue;
+    json.get(jsonData, "LED");
+    if (jsonData.type == "int")
+      LEDidentifikator = jsonData.intValue;
     json.iteratorEnd();
     Firebase.setBool(fireData, cesta + "Start", false); //nastavanie udajov
     Firebase.setBool(fireData, cesta + "Hotovo", false);
@@ -143,9 +147,11 @@ void setup()
     Firebase.setString(fireData, cesta + "Id", ipPom);  //nastavenie noveho zariadenia
     Firebase.setBool(fireData, cesta + "Start", false);
     Firebase.setInt(fireData, cesta + "Volby", 0);
+    Firebase.setInt(fireData, cesta + "LED", LEDidentifikator);
     Firebase.setBool(fireData, cesta + "Hotovo", false);
     Firebase.setBool(fireData, cesta + "Posledne", false);
     Firebase.setBool(fireData, cesta + "Online", true);
+    
   }
   Serial.print("...OK\n");
   //KONIEC WIFI CASTI
@@ -632,6 +638,34 @@ void vzdialenost()
   }
 }
 
+void LEDindetifikatorObsluha(){
+  if(LEDzmena){
+    digitalWrite(redDioda, LOW);
+    digitalWrite(blueDioda, LOW);
+    digitalWrite(greenDioda, LOW);
+    if(LEDidentifikator==0)digitalWrite(redDioda, HIGH);
+    if(LEDidentifikator==1)digitalWrite(greenDioda, HIGH);
+    if(LEDidentifikator==2)digitalWrite(blueDioda, HIGH);
+    if(LEDidentifikator==3){//zlta
+      digitalWrite(greenDioda, HIGH);
+      digitalWrite(redDioda, HIGH);
+    }
+    if(LEDidentifikator==4){//fialova
+      digitalWrite(redDioda, HIGH);
+      digitalWrite(blueDioda, HIGH);
+    }
+    if(LEDidentifikator==5){//tyrkysova
+      digitalWrite(greenDioda, HIGH);
+      digitalWrite(blueDioda, HIGH);
+    }
+    if(LEDidentifikator==6){//biela
+      digitalWrite(greenDioda, HIGH);
+      digitalWrite(blueDioda, HIGH);
+      digitalWrite(redDioda,HIGH);
+    }
+  }
+  LEDzmena=false;
+}
 void loop()
 {
   if (!zapnutaHra)
@@ -657,13 +691,18 @@ void loop()
     json.get(jsonData, "Online");
     if (jsonData.type == "bool")
       online = jsonData.boolValue;
+    json.get(jsonData, "LED");
+    if (jsonData.type == "int"){
+      if(jsonData.intValue!=LEDidentifikator)LEDzmena=true;
+      LEDidentifikator = jsonData.intValue;
+    }
     json.iteratorEnd();
     if(!online){
       Firebase.setBool(fireData, cesta + "Online", "true");
       online=true;
     }
     //KONIEC WIFI CASTI
-
+    LEDindetifikatorObsluha();
     if (x != y) // zapis na displej len pri zmene
     {
       x = y;
@@ -681,6 +720,9 @@ void loop()
       detachInterrupt(tlacidloModre);
       zapnutaHra = true;
       u8x8.clear();
+      digitalWrite(redDioda, LOW);
+      digitalWrite(blueDioda, LOW);
+      digitalWrite(greenDioda, LOW);
     }
     //Serial.printf(".");
   
@@ -715,6 +757,7 @@ void loop()
       Firebase.setBool(fireData, cesta + "Hotovo", "false");
       attachInterrupt(tlacidloModre, tlacidloModrePrerusenie, FALLING);
       x=55;
+      LEDzmena=true;
       u8x8.clear();
       u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
       u8x8.setCursor(0, 0);
