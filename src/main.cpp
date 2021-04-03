@@ -5,26 +5,26 @@
 
 #include "morseovka.h"
 
-#define MAXMOZNOSTI 7  //max moznosti hier ktoru su k dispozicii
+#define MAXMOZNOSTI 7                                                                                                                 //max moznosti hier ktoru su k dispozicii
 const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj", "Dotyk", "Vzdialenost"}; //nazvy hier z menu
 
 // WIFI CAST
 #define FIREBASE_HOST "unikova-hra-default-rtdb.firebaseio.com" //databaza udaje
 #define FIREBASE_AUTH "gvsLlFof5OhtvW9SEFnpdLYzI6lVgJujVxD7HIHc"
-#define WIFI_SSID "WifiDomaK"   //wifi meno
+#define WIFI_SSID "WifiDomaK"         //wifi meno
 #define WIFI_PASSWORD "1krizan2wifi3" //wifi heslo
 
-FirebaseData fireData;          //databaza
-String cesta = "/Zariadenie/";  //cestat k databaze
+FirebaseData fireData;         //databaza
+String cesta = "/Zariadenie/"; //cestat k databaze
 bool online = false;
-int LEDidentifikator=0;
+int LEDidentifikator = 0;
 bool LEDzmena = true; //prve zopnutie diod
 //KONIEC WIFI CASTI
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); //displej definicia
 
 movingAvg priemerSvetelnejBrany(2); //klzavy priemer pre svetlenej brany
-movingAvg priemerMerani(5);         //klzavy priemer pre meranie morseovky
+movingAvg priemerMerani(20);         //klzavy priemer pre meranie morseovky
 
 #define MERANIADOTYKUPREPRIEMER 5
 movingAvg dotykMeranie1(MERANIADOTYKUPREPRIEMER); //klzavy priemer pre meranie dotyku
@@ -55,7 +55,6 @@ const int blueDioda = 25;
 
 int stavModrehoTlacidla; //nove pomocne tlacidlo
 
-
 bool hotovo = false;
 String ipPom;
 
@@ -65,15 +64,13 @@ const int relePin = 26;
 int8_t trigPin = 17;
 int8_t echoPin = 16;
 
-
-
 void setup()
 {
-  u8x8.begin(); //inicializacia displeja
+  u8x8.begin();         //inicializacia displeja
   Serial.begin(115200); //nestavenie komunikacnej rychlosti
   //pinMode(photoresistorPin, INPUT);
 
-  pinMode(tlacidloModre, INPUT);  //nastavenie vystupov
+  pinMode(tlacidloModre, INPUT); //nastavenie vystupov
   attachInterrupt(tlacidloModre, tlacidloModrePrerusenie, FALLING);
   pinMode(tlacidloCervene, INPUT);
   pinMode(tlacidloZelene, INPUT);
@@ -91,8 +88,8 @@ void setup()
   priemerMerani.begin();         //klzavy priemer
   priemerSvetelnejBrany.begin(); //klzavy priemer
 
-  dotykMeranie1.begin();    //klzavy priemer
-  dotykMeranie2.begin();    //klzavy priemer
+  dotykMeranie1.begin(); //klzavy priemer
+  dotykMeranie2.begin(); //klzavy priemer
 
   //WIFI CAST
 
@@ -104,12 +101,12 @@ void setup()
     delay(300);
   }
   Serial.print(".OK\nPripojene s IP: ");
-  IPAddress ip = WiFi.localIP();  //ulozenie IP adresy
+  IPAddress ip = WiFi.localIP(); //ulozenie IP adresy
   Serial.println(ip);
 
   Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH); //nastavenie udajov databazy
-  Firebase.reconnectWiFi(true); //aktivovane znovu pripajanie
-  if (!Firebase.beginStream(fireData, cesta)) //pokus pripojit sa k databaze
+  Firebase.reconnectWiFi(true);                 //aktivovane znovu pripajanie
+  if (!Firebase.beginStream(fireData, cesta))   //pokus pripojit sa k databaze
     Serial.println("Problem: " + fireData.errorReason());
 
   ipPom = ip.toString();
@@ -119,7 +116,7 @@ void setup()
   u8x8.print("~~~~~~~~~~~~~~~~");
   u8x8.setCursor(0, 7);
   u8x8.print(ipPom);
-  for (int i = 0; i < ipPom.length(); i++)  //v ip adrese nahradenie bodiek ciarkami
+  for (int i = 0; i < ipPom.length(); i++) //v ip adrese nahradenie bodiek ciarkami
   {
     if (ipPom[i] == '.')
       ipPom[i] = '-';
@@ -127,8 +124,8 @@ void setup()
   cesta += ipPom + "/"; //doplnenie cesty
   Serial.print("Nacitanie dat z FireBase");
   if (Firebase.getInt(fireData, cesta + "Volby"))
-  { //pri dostupnosti dat sa nastavia predchadzajuce parametre
-    Firebase.getJSON(fireData, cesta);  //ziskanie udajov
+  {                                             //pri dostupnosti dat sa nastavia predchadzajuce parametre
+    Firebase.getJSON(fireData, cesta);          //ziskanie udajov
     FirebaseJson &json = fireData.jsonObject(); //formatovanie JSON dat
     FirebaseJsonData jsonData;
     json.get(jsonData, "Volby");
@@ -143,15 +140,14 @@ void setup()
     Firebase.setBool(fireData, cesta + "Online", true);
   }
   else
-  { //pri nedostupnosti dat sa parametre nastavia nanovo
-    Firebase.setString(fireData, cesta + "Id", ipPom);  //nastavenie noveho zariadenia
+  {                                                    //pri nedostupnosti dat sa parametre nastavia nanovo
+    Firebase.setString(fireData, cesta + "Id", ipPom); //nastavenie noveho zariadenia
     Firebase.setBool(fireData, cesta + "Start", false);
     Firebase.setInt(fireData, cesta + "Volby", 0);
     Firebase.setInt(fireData, cesta + "LED", LEDidentifikator);
     Firebase.setBool(fireData, cesta + "Hotovo", false);
     Firebase.setBool(fireData, cesta + "Posledne", false);
     Firebase.setBool(fireData, cesta + "Online", true);
-    
   }
   Serial.print("...OK\n");
   //KONIEC WIFI CASTI
@@ -188,12 +184,11 @@ void svetelnaBrana()
     {
       pocitadlo = 0;
       Firebase.setBool(fireData, cesta + "Hotovo", "true");
-      hotovo=true;
+      hotovo = true;
       u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
       u8x8.setCursor(0, 1);
       u8x8.print("ULOHA SPLNENA");
     }
-
   }
 }
 
@@ -210,7 +205,7 @@ void morseovka()
     bool pismenoHotovo = false;
     int dlzkaPismena = 0;
     int znak[5] = {2, 2, 2, 2, 2};
-    int prahovaUroven = 800;
+    int prahovaUroven = 350;
     int pocitadloZnaku = 0;
     int pocitadloMedzery = 0;
     while (pismenoHotovo == false)
@@ -220,12 +215,12 @@ void morseovka()
 
       if (priemerMerani.reading(analogRead(photoresistorPin)) < prahovaUroven)
       {
-        while ((priemerMerani.reading(analogRead(photoresistorPin)) < prahovaUroven) && pocitadloZnaku < 6000)
+        while ((priemerMerani.reading(analogRead(photoresistorPin)) < prahovaUroven) && pocitadloZnaku < 10000)
         {
           pocitadloZnaku++;
         }
         delay(10);
-        while ((priemerMerani.reading(analogRead(photoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 8000)
+        while ((priemerMerani.reading(analogRead(photoresistorPin)) >= prahovaUroven) && pocitadloMedzery < 15000)
         {
           pocitadloMedzery++;
         }
@@ -258,7 +253,7 @@ void morseovka()
       u8x8.print("ULOHA SPLNENA");
       hotovo = true;
     }
-    if (pocitadloMedzery == 8000) //po zobrazeni slova sa text zmaze
+    if (pocitadloMedzery == 15000) //po zobrazeni slova sa text zmaze
     {
       delay(2000);
       u8x8.setCursor(0, 3);
@@ -578,7 +573,8 @@ void tlieskanie()
 void dotyk()
 {
   const int prahovaHodnota = 30;
-  while(!hotovo){
+  while (!hotovo)
+  {
     int dotykHodnota1 = dotykMeranie1.reading(touchRead(dotykPin1));
     int dotykHodnota2 = dotykMeranie2.reading(touchRead(dotykPin2));
     //u8x8.setFont(u8x8_font_inb33_3x6_n);
@@ -620,52 +616,66 @@ void vzdialenost()
 
     u8x8.setFont(u8x8_font_inb33_3x6_n);
     u8x8.drawString(0, 2, u8x8_u16toa(dlzka, 4));
-    if(dlzka>pozadovanaVzdialenost-1 && dlzka < pozadovanaVzdialenost +1){
-        casovac++;
-        digitalWrite(greenDioda,HIGH);
-        if(casovac>100){
-          u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
-          u8x8.drawString(0, 0, "VYHRA");
-          Firebase.setBool(fireData, cesta + "Hotovo", "true");
-          hotovo = true;
-          digitalWrite(greenDioda,LOW);
-        }
-    }else{
-      digitalWrite(greenDioda,LOW);
+    if (dlzka > pozadovanaVzdialenost - 1 && dlzka < pozadovanaVzdialenost + 1)
+    {
+      casovac++;
+      digitalWrite(greenDioda, HIGH);
+      if (casovac > 100)
+      {
+        u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
+        u8x8.drawString(0, 0, "VYHRA");
+        Firebase.setBool(fireData, cesta + "Hotovo", "true");
+        hotovo = true;
+        digitalWrite(greenDioda, LOW);
+      }
+    }
+    else
+    {
+      digitalWrite(greenDioda, LOW);
       Serial.printf("Reset %d\n", casovac);
-      casovac=0;
+      casovac = 0;
     }
   }
 }
 
-void LEDindetifikatorObsluha(){
-  if(LEDzmena){
+void LEDindetifikatorObsluha()
+{
+  if (LEDzmena)
+  {
     digitalWrite(redDioda, LOW);
     digitalWrite(blueDioda, LOW);
     digitalWrite(greenDioda, LOW);
-    if(LEDidentifikator==0)digitalWrite(redDioda, HIGH);
-    if(LEDidentifikator==1)digitalWrite(greenDioda, HIGH);
-    if(LEDidentifikator==2)digitalWrite(blueDioda, HIGH);
-    if(LEDidentifikator==3){//zlta
+    if (LEDidentifikator == 0)
+      digitalWrite(redDioda, HIGH);
+    if (LEDidentifikator == 1)
+      digitalWrite(greenDioda, HIGH);
+    if (LEDidentifikator == 2)
+      digitalWrite(blueDioda, HIGH);
+    if (LEDidentifikator == 3)
+    { //zlta
       digitalWrite(greenDioda, HIGH);
       digitalWrite(redDioda, HIGH);
     }
-    if(LEDidentifikator==4){//fialova
+    if (LEDidentifikator == 4)
+    { //fialova
       digitalWrite(redDioda, HIGH);
       digitalWrite(blueDioda, HIGH);
     }
-    if(LEDidentifikator==5){//tyrkysova
+    if (LEDidentifikator == 5)
+    { //tyrkysova
       digitalWrite(greenDioda, HIGH);
       digitalWrite(blueDioda, HIGH);
     }
-    if(LEDidentifikator==6){//biela
+    if (LEDidentifikator == 6)
+    { //biela
       digitalWrite(greenDioda, HIGH);
       digitalWrite(blueDioda, HIGH);
-      digitalWrite(redDioda,HIGH);
+      digitalWrite(redDioda, HIGH);
     }
   }
-  LEDzmena=false;
+  LEDzmena = false;
 }
+
 void loop()
 {
   if (!zapnutaHra)
@@ -692,14 +702,17 @@ void loop()
     if (jsonData.type == "bool")
       online = jsonData.boolValue;
     json.get(jsonData, "LED");
-    if (jsonData.type == "int"){
-      if(jsonData.intValue!=LEDidentifikator)LEDzmena=true;
+    if (jsonData.type == "int")
+    {
+      if (jsonData.intValue != LEDidentifikator)
+        LEDzmena = true;
       LEDidentifikator = jsonData.intValue;
     }
     json.iteratorEnd();
-    if(!online){
+    if (!online)
+    {
       Firebase.setBool(fireData, cesta + "Online", "true");
-      online=true;
+      online = true;
     }
     //KONIEC WIFI CASTI
     LEDindetifikatorObsluha();
@@ -725,25 +738,26 @@ void loop()
       digitalWrite(greenDioda, LOW);
     }
     //Serial.printf(".");
-  
-  //MENU
-  if (zapnutaHra == true && y == 0)
-    svetelnaBrana();
-  if (zapnutaHra == true && y == 1)
-    morseovka();
-  if (zapnutaHra == true && y == 2)
-    LEDHra();
-  if (zapnutaHra == true && y == 3)
-    miesanieFarieb();
-  if (zapnutaHra == true && y == 4)
-    tlieskanie();
-  if (zapnutaHra == true && y == 5)
-    dotyk();
-  if (zapnutaHra == true && y == 6)
-    vzdialenost();
+
+    //MENU
+    if (zapnutaHra == true && y == 0)
+      svetelnaBrana();
+    if (zapnutaHra == true && y == 1)
+      morseovka();
+    if (zapnutaHra == true && y == 2)
+      LEDHra();
+    if (zapnutaHra == true && y == 3)
+      miesanieFarieb();
+    if (zapnutaHra == true && y == 4)
+      tlieskanie();
+    if (zapnutaHra == true && y == 5)
+      dotyk();
+    if (zapnutaHra == true && y == 6)
+      vzdialenost();
   }
-  if(hotovo  && zapnutaHra){
-    digitalWrite(relePin,HIGH); //zopnutie rele
+  if (hotovo && zapnutaHra)
+  {
+    digitalWrite(relePin, HIGH); //zopnutie rele
     Firebase.getJSON(fireData, cesta);
     FirebaseJson &json = fireData.jsonObject();
     FirebaseJsonData jsonData;
@@ -751,13 +765,14 @@ void loop()
     if (jsonData.type == "bool")
       zapnutaHra = jsonData.boolValue;
     json.iteratorEnd();
-    if(!zapnutaHra){
-      hotovo=false;
-      digitalWrite(relePin,LOW);
+    if (!zapnutaHra)
+    {
+      hotovo = false;
+      digitalWrite(relePin, LOW);
       Firebase.setBool(fireData, cesta + "Hotovo", "false");
       attachInterrupt(tlacidloModre, tlacidloModrePrerusenie, FALLING);
-      x=55;
-      LEDzmena=true;
+      x = 55;
+      LEDzmena = true;
       u8x8.clear();
       u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
       u8x8.setCursor(0, 0);
