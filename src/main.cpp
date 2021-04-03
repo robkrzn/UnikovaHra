@@ -16,6 +16,7 @@ const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA",
 
 FirebaseData fireData;          //databaza
 String cesta = "/Zariadenie/";  //cestat k databaze
+bool online = false;
 
 //KONIEC WIFI CASTI
 
@@ -62,6 +63,8 @@ const int relePin = 26;
 //HC-SR04
 int8_t trigPin = 17;
 int8_t echoPin = 16;
+
+
 
 void setup()
 {
@@ -133,6 +136,7 @@ void setup()
     json.iteratorEnd();
     Firebase.setBool(fireData, cesta + "Start", false); //nastavanie udajov
     Firebase.setBool(fireData, cesta + "Hotovo", false);
+    Firebase.setBool(fireData, cesta + "Online", true);
   }
   else
   { //pri nedostupnosti dat sa parametre nastavia nanovo
@@ -141,6 +145,7 @@ void setup()
     Firebase.setInt(fireData, cesta + "Volby", 0);
     Firebase.setBool(fireData, cesta + "Hotovo", false);
     Firebase.setBool(fireData, cesta + "Posledne", false);
+    Firebase.setBool(fireData, cesta + "Online", true);
   }
   Serial.print("...OK\n");
   //KONIEC WIFI CASTI
@@ -649,7 +654,14 @@ void loop()
     json.get(jsonData, "Start");
     if (jsonData.type == "bool")
       zapnutaHra = jsonData.boolValue;
+    json.get(jsonData, "Online");
+    if (jsonData.type == "bool")
+      online = jsonData.boolValue;
     json.iteratorEnd();
+    if(!online){
+      Firebase.setBool(fireData, cesta + "Online", "true");
+      online=true;
+    }
     //KONIEC WIFI CASTI
 
     if (x != y) // zapis na displej len pri zmene
