@@ -57,6 +57,7 @@ int stavModrehoTlacidla; //nove pomocne tlacidlo
 
 bool hotovo = false;
 String ipPom;
+bool infoVypis = false; //pomocna premenna pre konecny vystup
 
 const int relePin = 26;
 
@@ -189,7 +190,7 @@ void svetelnaBrana()
     if (pocitadlo == pocetPocitadla)
     {
       pocitadlo = 0;
-      Firebase.setBool(fireData, cesta + "Hotovo", "true");
+      //Firebase.setBool(fireData, cesta + "Hotovo", "true");
       hotovo = true;
       u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
       u8x8.setCursor(0, 1);
@@ -254,7 +255,7 @@ void morseovka()
     if (overOdpoved(odpoved)) //ak sa zhoduje text s vyhernym textom
     {
       Serial.printf("VYHRA");
-      Firebase.setBool(fireData, cesta + "Hotovo", "true");
+      //Firebase.setBool(fireData, cesta + "Hotovo", "true");
       u8x8.setCursor(0, 4);
       u8x8.print("ULOHA SPLNENA");
       hotovo = true;
@@ -369,7 +370,7 @@ void LEDHra()
       u8x8.print("                ");
       u8x8.setCursor(0, 4);
       u8x8.print("Vyhral si");
-      Firebase.setBool(fireData, cesta + "Hotovo", "true");
+      //Firebase.setBool(fireData, cesta + "Hotovo", "true");
     }
     u8x8.setCursor(0, 3);
     u8x8.print("                ");
@@ -506,7 +507,7 @@ void miesanieFarieb()
       u8x8.print("                ");
       u8x8.setCursor(0, 4);
       u8x8.print("Vyhral si");
-      Firebase.setBool(fireData, cesta + "Hotovo", "true");
+      //Firebase.setBool(fireData, cesta + "Hotovo", "true");
     }
     u8x8.setCursor(0, 3);
     u8x8.print("                ");
@@ -544,7 +545,7 @@ void tlieskanie()
         digitalWrite(redDioda, true);
         u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
         u8x8.drawString(0, 4, "ZAP");
-        Firebase.setBool(fireData, cesta + "Hotovo", "true");
+        //Firebase.setBool(fireData, cesta + "Hotovo", "true");
       }
       else
       {
@@ -598,7 +599,7 @@ void dotyk()
     {
       u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
       u8x8.drawString(0, 4, "VYHRA");
-      Firebase.setBool(fireData, cesta + "Hotovo", "true");
+      //Firebase.setBool(fireData, cesta + "Hotovo", "true");
       hotovo = true;
     }
   }
@@ -630,7 +631,7 @@ void vzdialenost()
       {
         u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
         u8x8.drawString(0, 0, "VYHRA");
-        Firebase.setBool(fireData, cesta + "Hotovo", "true");
+        //Firebase.setBool(fireData, cesta + "Hotovo", "true");
         hotovo = true;
         digitalWrite(greenDioda, LOW);
       }
@@ -663,7 +664,7 @@ void voda(){
       digitalWrite(redDioda, LOW);
       if(casovac==50){
         hotovo=true;
-        Firebase.setBool(fireData, cesta + "Hotovo", "true");
+        //Firebase.setBool(fireData, cesta + "Hotovo", "true");
         digitalWrite(greenDioda, LOW);
       }
     }else{
@@ -769,6 +770,7 @@ void loop()
       Firebase.setBool(fireData, cesta + "Start", "true");
       detachInterrupt(tlacidloModre);
       zapnutaHra = true;
+      infoVypis = true;
       u8x8.clear();
       digitalWrite(redDioda, LOW);
       digitalWrite(blueDioda, LOW);
@@ -796,6 +798,16 @@ void loop()
   }
   if (hotovo && zapnutaHra)
   {
+    if(infoVypis==true){
+      Firebase.setBool(fireData, cesta + "Hotovo", "true");
+      u8x8.clear();
+      u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+      u8x8.setCursor(0, 0);
+      u8x8.print("Hra bola uspesne");
+      u8x8.setCursor(3, 2);
+      u8x8.print("DOKONCENA");
+      infoVypis=false;
+    }
     digitalWrite(relePin, HIGH); //zopnutie rele
     Firebase.getJSON(fireData, cesta);
     FirebaseJson &json = fireData.jsonObject();
