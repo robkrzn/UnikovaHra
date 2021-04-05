@@ -5,8 +5,8 @@
 
 #include "morseovka.h"
 
-#define MAXMOZNOSTI 7                                                                                                                 //max moznosti hier ktoru su k dispozicii
-const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj", "Dotyk", "Vzdialenost"}; //nazvy hier z menu
+#define MAXMOZNOSTI 8                                                                                                                 //max moznosti hier ktoru su k dispozicii
+const String nazvyHier[MAXMOZNOSTI] = {"Svetelna brana", "Morseovka", "LED HRA", "Miesaj farby", "Tlieskaj", "Dotyk", "Vzdialenost", "Voda"}; //nazvy hier z menu
 
 // WIFI CAST
 #define FIREBASE_HOST "unikova-hra-default-rtdb.firebaseio.com" //databaza udaje
@@ -64,6 +64,10 @@ const int relePin = 26;
 int8_t trigPin = 17;
 int8_t echoPin = 16;
 
+//vodny senzor
+const int vodnyPin = 34;
+const int vodnyPinVcc = 4;
+
 void setup()
 {
   u8x8.begin();         //inicializacia displeja
@@ -84,6 +88,8 @@ void setup()
 
   pinMode(trigPin, OUTPUT); //HC-SR04
   pinMode(echoPin, INPUT);  //HC-SR04
+
+  pinMode(vodnyPinVcc, OUTPUT); //VODA START
 
   priemerMerani.begin();         //klzavy priemer
   priemerSvetelnejBrany.begin(); //klzavy priemer
@@ -638,6 +644,37 @@ void vzdialenost()
   }
 }
 
+void voda(){
+  int hodnota = 0;
+  int pozadovanaHodnota = 1000;
+  int odchylka = 100;
+  int casovac = 0;
+  while(!hotovo){
+    digitalWrite(vodnyPinVcc,HIGH);
+    delay(10); 
+    hodnota = dotykMeranie1.reading(analogRead(vodnyPin));
+    digitalWrite(vodnyPinVcc,LOW);
+    //u8x8.setFont(u8x8_font_inb33_3x6_n);
+    //u8x8.drawString(0, 2, u8x8_u16toa(hodnota, 4));
+    Serial.printf("Hodnota %d \n", hodnota);
+    if(hodnota>pozadovanaHodnota-odchylka && hodnota < pozadovanaHodnota + odchylka){
+      casovac++;
+      digitalWrite(greenDioda, HIGH);
+      digitalWrite(redDioda, LOW);
+      if(casovac==50){
+        hotovo=true;
+        Firebase.setBool(fireData, cesta + "Hotovo", "true");
+        digitalWrite(greenDioda, LOW);
+      }
+    }else{
+      casovac = 0;
+      digitalWrite(greenDioda, LOW);
+      digitalWrite(redDioda, HIGH);
+    }
+    delay(100);
+  }
+}
+
 void LEDindetifikatorObsluha()
 {
   if (LEDzmena)
@@ -754,6 +791,8 @@ void loop()
       dotyk();
     if (zapnutaHra == true && y == 6)
       vzdialenost();
+    if (zapnutaHra == true && y == 7)
+      voda();
   }
   if (hotovo && zapnutaHra)
   {
