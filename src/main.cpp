@@ -47,9 +47,9 @@ const int dotykPin1 = 27;
 const int dotykPin2 = 14;
 
 //RGB MODUL
-const int redDioda = 32;
+const int redDioda = 25;
 const int greenDioda = 33;
-const int blueDioda = 25;
+const int blueDioda = 32;
 
 //globalne pomocne premenne
 
@@ -167,7 +167,7 @@ void setup()
 
 void svetelnaBrana()
 {
-  int prahovaUroven = 350;
+  int prahovaUroven = 100;
   int hodnotaPhotorezistora;
   int pocetPocitadla = 10;
   int pocitadlo = 0;
@@ -184,8 +184,9 @@ void svetelnaBrana()
       pocitadlo++;
       zapnute = false;
       Serial.printf("%d\n", pocitadlo);
+      u8x8.drawString(0, 2, u8x8_u16toa(pocitadlo, 2)); //info vypis o hodnote
     }
-    u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4)); //info vypis o hodnote
+    //u8x8.drawString(0, 2, u8x8_u16toa(hodnotaPhotorezistora, 4)); //info vypis o hodnote
 
     if (pocitadlo == pocetPocitadla)
     {
@@ -628,7 +629,7 @@ void vzdialenost()
     {
       casovac++;
       digitalWrite(greenDioda, HIGH);
-      if (casovac > 100)
+      if (casovac > 80)
       {
         u8x8.setFont(u8x8_font_px437wyse700b_2x2_r);
         u8x8.drawString(0, 0, "VYHRA");
@@ -663,7 +664,7 @@ void voda(){
       casovac++;
       digitalWrite(greenDioda, HIGH);
       digitalWrite(redDioda, LOW);
-      if(casovac==50){
+      if(casovac==20){
         hotovo=true;
         //Firebase.setBool(fireData, cesta + "Hotovo", "true");
         digitalWrite(greenDioda, LOW);
@@ -808,8 +809,9 @@ void loop()
       u8x8.setCursor(3, 2);
       u8x8.print("DOKONCENA");
       infoVypis=false;
+      digitalWrite(relePin, HIGH); //zopnutie rele
     }
-    digitalWrite(relePin, HIGH); //zopnutie rele
+    
     Firebase.getJSON(fireData, cesta);
     FirebaseJson &json = fireData.jsonObject();
     FirebaseJsonData jsonData;
