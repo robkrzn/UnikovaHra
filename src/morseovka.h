@@ -6,7 +6,7 @@ typedef struct
 	char pismeno;
 } morse_table;
 
-const morse_table MorseTabulka[] = {
+const morse_table MorseTabulka[] = {//morse abeceda
 	{{0, 1, 2, 2, 2}, 'A'},
 	{{1, 0, 0, 0, 2}, 'B'},
 	{{1, 0, 1, 0, 2}, 'C'},
